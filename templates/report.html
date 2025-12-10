@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Workout Report</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         .report-header {
             text-align: center;
@@ -26,12 +25,19 @@
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
         }
-        .graph-panel {
-            flex: 2;
-            padding: 20px;
+        /* New panel for recommendations */
+        .recommendation-panel {
+            flex: 2; /* Takes up the space of the former graph */
+            padding: 30px;
             background-color: var(--color-panel-bg);
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        .recommendation-panel h2 {
+            color: var(--color-primary);
+            border-bottom: 1px solid var(--color-dark-bg);
+            padding-bottom: 15px;
+            margin-bottom: 20px;
         }
         .metric-row { /* Use existing style */ }
         .summary-metric h3 {
@@ -46,6 +52,25 @@
         .error-count {
             color: var(--color-danger) !important;
             font-size: 1.5em;
+        }
+        .recommendation-list {
+            list-style: none;
+            padding-left: 0;
+        }
+        .recommendation-list li {
+            padding: 10px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+        .recommendation-list li:last-child {
+            border-bottom: none;
+        }
+        .recommendation-title {
+            font-weight: 700;
+            color: var(--color-warning);
+            margin-right: 10px;
+        }
+        .recommendation-text {
+            color: var(--color-text-light);
         }
     </style>
 </head>
@@ -83,9 +108,11 @@
         </a>
     </div>
 
-    <div class="graph-panel">
-        <h2>Angle History Over Time</h2>
-        <canvas id="angleChart"></canvas>
+    <div class="recommendation-panel">
+        <h2>Future Recommendations</h2>
+        <div id="recommendation-content">
+            <p style="color: var(--color-text-dim);">Analyzing performance data...</p>
+        </div>
     </div>
 </div>
 
