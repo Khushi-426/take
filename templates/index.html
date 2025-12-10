@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PhysioCheck Workout Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="container">
+    <div class="video-panel">
+        <h1 id="main-header">PhysioCheck: Inactive</h1>
+        <div class="controls">
+            <button id="start-btn">START TRACKING</button>
+            <button id="stop-btn" disabled>STOP TRACKING</button>
+        </div>
+        <div class="video-stream-container">
+            <img id="video_stream" src="" alt="Video Feed Not Active">
+        </div>
+    </div>
+
+    <div class="data-panel">
+        <h2>Performance Metrics</h2>
+        
+        <div class="arm-metrics" id="right-metrics">
+            <h3><span style="color: var(--color-danger);">RIGHT ARM</span></h3>
+            <div class="metric-row"><span class="label">REPS:</span> <span class="value" id="right-reps">--</span></div>
+            <div class="metric-row"><span class="label">STAGE:</span> <span class="value stage-value" id="right-stage">INACTIVE</span></div>
+            <div class="metric-row"><span class="label">ANGLE:</span> <span class="value" id="right-angle">--°</span></div>
+            
+            <div class="metric-row"><span class="label">CURR REP TIME:</span> <span class="value rep-time" id="right-curr-time">--</span></div>
+            
+            <div class="metric-row"><span class="label">MIN REP TIME:</span> <span class="value rep-time" id="right-min-time">--</span></div>
+            
+            <div class="metric-row"><span class="label">LAST REP TIME:</span> <span class="value rep-time" id="right-time">--</span></div>
+        </div>
+        
+        <div class="arm-metrics" id="left-metrics">
+            <h3><span style="color: var(--color-primary);">LEFT ARM</span></h3>
+            <div class="metric-row"><span class="label">REPS:</span> <span class="value" id="left-reps">--</span></div>
+            <div class="metric-row"><span class="label">STAGE:</span> <span class="value stage-value" id="left-stage">INACTIVE</span></div>
+            <div class="metric-row"><span class="label">ANGLE:</span> <span class="value" id="left-angle">--°</span></div>
+
+            <div class="metric-row"><span class="label">CURR REP TIME:</span> <span class="value rep-time" id="left-curr-time">--</span></div>
+
+            <div class="metric-row"><span class="label">MIN REP TIME:</span> <span class="value rep-time" id="left-min-time">--</span></div>
+
+            <div class="metric-row"><span class="label">LAST REP TIME:</span> <span class="value rep-time" id="left-time">--</span></div>
+        </div>
+
+        <div id="overall-feedback" style="background-color: var(--color-warning); color: var(--color-dark-bg);">
+            Press START to begin tracking your workout.
+        </div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+</html>

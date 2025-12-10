@@ -1,0 +1,50 @@
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# Virtual environment (your bicep_env folder)
+bicep_env/
+.venv/
+env/
+venv/
+
+# Pip cache
+pip-wheel-metadata/
+*.egg-info/
+dist/
+build/
+
+# ----------------------------
+# VS Code
+# ----------------------------
+.vscode/
+
+# ----------------------------
+# Bytecode cache
+# ----------------------------
+*.log
+
+# ----------------------------
+# Temporary files
+# ----------------------------
+*.tmp
+*.swp
+*.swo
+.DS_Store
+
+# ----------------------------
+# Flask uploads (if any)
+# ----------------------------
+uploads/
+instance/
+
+# ----------------------------
+# Environment variables
+# ----------------------------
+.env
+*.env

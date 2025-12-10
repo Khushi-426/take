@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Workout Report</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        .report-header {
+            text-align: center;
+            padding: 30px;
+            background-color: var(--color-panel-bg);
+            border-bottom: 2px solid var(--color-primary);
+        }
+        .report-container {
+            width: 95%;
+            max-width: 1400px;
+            margin: 30px auto;
+            display: flex;
+            gap: 20px;
+        }
+        .summary-panel {
+            flex: 1;
+            padding: 20px;
+            background-color: var(--color-panel-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        .graph-panel {
+            flex: 2;
+            padding: 20px;
+            background-color: var(--color-panel-bg);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+        .metric-row { /* Use existing style */ }
+        .summary-metric h3 {
+            font-size: 2em;
+            color: var(--color-success);
+            margin-bottom: 5px;
+        }
+        .summary-metric p {
+            color: var(--color-text-dim);
+            text-transform: uppercase;
+        }
+        .error-count {
+            color: var(--color-danger) !important;
+            font-size: 1.5em;
+        }
+    </style>
+</head>
+<body>
+
+<div class="report-header">
+    <h1 id="report-title" style="color: var(--color-primary);">Bicep Curl Performance Report</h1>
+    <p style="color: var(--color-text-dim);">Session Duration: <span id="duration-display">--</span> seconds</p>
+</div>
+
+<div class="report-container">
+    <div class="summary-panel">
+        <h2>Summary</h2>
+        <div class="summary-metric">
+            <h3 id="total-reps-display">--</h3>
+            <p>Total Reps</p>
+        </div>
+        
+        <div class="arm-metrics">
+            <h3><span style="color: var(--color-danger);">RIGHT ARM</span></h3>
+            <div class="metric-row"><span class="label">REPS COUNT:</span> <span class="value" id="r-reps">--</span></div>
+            <div class="metric-row"><span class="label">BEST REP TIME:</span> <span class="value rep-time" id="r-min-time">--</span></div>
+            <div class="metric-row"><span class="label">FORM ERRORS:</span> <span class="value error-count" id="r-errors">--</span></div>
+        </div>
+
+        <div class="arm-metrics">
+            <h3><span style="color: var(--color-primary);">LEFT ARM</span></h3>
+            <div class="metric-row"><span class="label">REPS COUNT:</span> <span class="value" id="l-reps">--</span></div>
+            <div class="metric-row"><span class="label">BEST REP TIME:</span> <span class="value rep-time" id="l-min-time">--</span></div>
+            <div class="metric-row"><span class="label">FORM ERRORS:</span> <span class="value error-count" id="l-errors">--</span></div>
+        </div>
+        
+        <a href="/" style="display: block; margin-top: 20px; text-align: center; color: var(--color-primary);">
+            &larr; Start New Session
+        </a>
+    </div>
+
+    <div class="graph-panel">
+        <h2>Angle History Over Time</h2>
+        <canvas id="angleChart"></canvas>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/report.js') }}"></script>
+
+</body>
+</html>

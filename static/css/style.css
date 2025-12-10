@@ -1,0 +1,206 @@
+/* --- Global Styles & Fonts --- */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+:root {
+    --color-dark-bg: #1c1c1c;       /* Deep charcoal background */
+    --color-panel-bg: #282828;      /* Slightly lighter panel background */
+    --color-primary: #00bcd4;       /* Cyan/Turquoise for accents */
+    --color-success: #4CAF50;       /* Green for positive feedback */
+    --color-warning: #ff9800;       /* Orange for caution */
+    --color-danger: #f44336;        /* Red for critical feedback */
+    --color-text-light: #f5f5f5;    /* Light text */
+    --color-text-dim: #9e9e9e;      /* Dim text for labels */
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+body {
+    background-color: var(--color-dark-bg);
+    color: var(--color-text-light);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+/* --- Main Container Layout --- */
+.container {
+    display: flex;
+    width: 95%;
+    max-width: 1600px;
+    background-color: var(--color-panel-bg);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* --- Video Panel --- */
+.video-panel {
+    flex: 2.5;
+    padding: 30px;
+    text-align: center;
+}
+
+#main-header {
+    color: var(--color-primary);
+    font-size: 1.8em;
+    margin-bottom: 20px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.video-stream-container {
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+    background-color: #000;
+    min-height: 500px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#video_stream {
+    width: 100%;
+    /* Max height to ensure it fits well on tall monitors */
+    max-height: 80vh; 
+    display: block;
+}
+
+.controls {
+    padding: 20px 0;
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.controls button {
+    padding: 12px 25px;
+    font-size: 1.1em;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+#start-btn {
+    background-color: var(--color-success);
+    color: white;
+}
+#start-btn:hover:not(:disabled) {
+    background-color: #388e3c;
+    transform: translateY(-2px);
+}
+
+#stop-btn {
+    background-color: var(--color-danger);
+    color: white;
+}
+#stop-btn:hover:not(:disabled) {
+    background-color: #d32f2f;
+    transform: translateY(-2px);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* --- Data Panel (Sidebar) --- */
+.data-panel {
+    flex: 1;
+    padding: 30px;
+    background-color: var(--color-dark-bg);
+    border-left: 1px solid var(--color-primary);
+    display: flex;
+    flex-direction: column;
+}
+
+h2 {
+    color: var(--color-primary);
+    border-bottom: 1px solid var(--color-panel-bg);
+    padding-bottom: 15px;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    text-transform: uppercase;
+}
+
+.arm-metrics {
+    margin-bottom: 25px;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: var(--color-panel-bg);
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.arm-metrics h3 {
+    margin-top: 0;
+    font-size: 1.2em;
+    padding-bottom: 5px;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.metric-row:last-child {
+    border-bottom: none;
+}
+
+.label {
+    font-weight: 400;
+    color: var(--color-text-dim);
+}
+
+.value {
+    font-size: 1.2em;
+    font-weight: 700;
+    color: var(--color-success); /* Default for reps/angle */
+}
+
+.stage-value {
+    color: var(--color-primary);
+}
+
+.rep-time {
+    color: var(--color-warning);
+}
+
+/* --- Overall Feedback Footer --- */
+#overall-feedback {
+    margin-top: auto; /* Pushes the feedback to the bottom */
+    padding: 20px;
+    border-radius: 8px;
+    font-size: 1.3em;
+    font-weight: 700;
+    text-align: center;
+    color: var(--color-dark-bg);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* --- Media Queries for Responsiveness (Optional but professional) --- */
+@media (max-width: 1024px) {
+    .container {
+        flex-direction: column;
+        width: 95%;
+        margin: 20px 0;
+    }
+
+    .data-panel {
+        border-left: none;
+        border-top: 1px solid var(--color-primary);
+    }
+}
