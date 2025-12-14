@@ -1,5 +1,5 @@
 """
-Flask application with API routes - OPTIMIZED & ACCURATE VERSION
+Flask application with API routes - LISTENING MODE INTEGRATED
 """
 from flask import Flask, Response, jsonify, request
 import cv2
@@ -20,10 +20,8 @@ from flask_bcrypt import Bcrypt
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 from flask_mail import Mail, Message
-# [Change] Import SocketIO
 from flask_socketio import SocketIO, emit 
 
-# --- IMPORT CUSTOM AI MODULE (CRITICAL FOR ACCURACY) ---
 from ai_engine import AIEngine
 
 # --- 0. CONFIGURATION ---
@@ -33,7 +31,7 @@ app = Flask(__name__)
 CORS(app)
 bcrypt = Bcrypt(app)
 
-# [Change] Initialize SocketIO with async_mode to ensure non-blocking behavior
+# Initialize SocketIO
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 # --- 1. MAIL CONFIGURATION ---
@@ -85,23 +83,20 @@ def generate_video_frames():
     if workout_session is None: return
     
     while workout_session.phase != WorkoutPhase.INACTIVE:
-        # process_frame handles MediaPipe inference and UI drawing
         frame, should_continue = workout_session.process_frame() 
         
         if not should_continue or frame is None:
             break
         
-        # [Critical Fix] Emit data and SLEEP to allow other requests (like Stop) to process
         socketio.emit('workout_update', workout_session.get_state_dict())
-        socketio.sleep(0.01) # Yield control for 10ms
+        socketio.sleep(0.01) 
 
-        # Encode frame
         ret, buffer = cv2.imencode('.jpg', frame)
         if ret:
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + buffer.tobytes() + b'\r\n')
 
-# --- 3. SOCKET EVENTS (NEW) ---
+# --- 3. SOCKET EVENTS ---
 
 @socketio.on('connect')
 def handle_connect():
@@ -111,7 +106,20 @@ def handle_connect():
 def handle_disconnect():
     print('Client disconnected')
 
-# [Change] Socket-based Stop command (More reliable than HTTP during streaming)
+# [NEW] Toggle Listening Mode (Pauses Dots)
+@socketio.on('toggle_listening')
+def handle_toggle_listening(data):
+    """
+    Toggles the listening mode.
+    data['active'] = True -> Stop Dots (Pause Analysis)
+    data['active'] = False -> Resume Dots (Resume Analysis)
+    """
+    active = data.get('active', False)
+    # print(f"🎤 Listening Mode: {active}") 
+    global workout_session
+    if workout_session:
+        workout_session.set_listening(active)
+
 @socketio.on('stop_session')
 def handle_stop_session(data):
     print("Received stop command via Socket")
@@ -239,7 +247,6 @@ def start_tracking():
     except Exception as e:
         return jsonify({'status': 'error', 'message': f'Failed to start: {e}'}), 500
 
-# Keep this for backward compatibility, but we use Socket for stopping now
 @app.route('/stop_tracking', methods=['POST'])
 def stop_tracking_http():
     global workout_session
@@ -261,5 +268,4 @@ def report_data():
 
 if __name__ == '__main__':
     init_session()
-    # [Critical] Use socketio.run
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
