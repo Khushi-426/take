@@ -1,9 +1,15 @@
+// frontend/src/App.jsx
+
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext'; 
 import { GoogleOAuthProvider } from '@react-oauth/google'; 
 
-import Dashboard from './Dashboard';
+// Renaming the import for clarity: Existing Dashboard is now PatientDashboard
+import PatientDashboard from './Dashboard'; 
+import TherapistDashboard from './TherapistDashboard'; // NEW: Therapist Dashboard
+import HomeRedirect from './HomeRedirect'; // NEW: Logic for the root path
+
 import Tracker from './Tracker';
 import Report from './Report';
 import Tutorial from './Tutorial'; 
@@ -38,8 +44,17 @@ function App() {
         <Router>
           <Layout>
             <Routes>
-              {/* --- Main Pages --- */}
-              <Route path="/" element={<Dashboard />} />
+              {/* --- MAIN ENTRY POINT --- */}
+              {/* The root path now uses HomeRedirect to check user type and send them to the correct dashboard. */}
+              <Route path="/" element={<HomeRedirect />} />
+              
+              {/* --- DASHBOARDS --- */}
+              {/* Patient Dashboard (The existing Dashboard component, now on a dedicated path) */}
+              <Route path="/patient-dashboard" element={<PatientDashboard />} />
+              {/* Therapist Dashboard (NEW, completely separate UI) */}
+              <Route path="/therapist-dashboard" element={<TherapistDashboard />} />
+              
+              {/* --- Other Main Pages --- */}
               <Route path="/track" element={<Tracker />} />
               <Route path="/report" element={<Report />} />
               
