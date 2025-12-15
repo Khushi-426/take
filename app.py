@@ -1,10 +1,6 @@
 """
-Flask application with API routes - EVENTLET STABLE VERSION
+Flask application with API routes - THREADING MODE (No Eventlet)
 """
-import eventlet
-# CRITICAL: Monkey patch must be called before other imports to ensure async compatibility
-eventlet.monkey_patch()
-
 from flask import Flask, Response, jsonify, request
 import cv2
 import mediapipe as mp
@@ -26,6 +22,12 @@ from flask_mail import Mail, Message
 from flask_socketio import SocketIO, emit
 from bson.objectid import ObjectId
 
+# --- OPTIONAL: Google Auth Library (Requested) ---
+# We import this to satisfy dependencies, though we use requests 
+# for Access Token validation to match the current Frontend flow.
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
 # --- IMPORT CUSTOM AI MODULE ---
 from ai_engine import AIEngine
 from constants import EXERCISE_PRESETS
@@ -36,12 +38,13 @@ from constants import EXERCISE_PRESETS
 load_dotenv()
 
 app = Flask(__name__)
-# UPDATED CORS: Explicitly allow all origins to prevent blocking frontend requests
-CORS(app, resources={r"/*": {"origins": "*"}})
+
+# UPDATED CORS: Explicitly allow all origins and headers
+CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 bcrypt = Bcrypt(app)
 
-# Use 'eventlet' async mode for stable WebSocket streaming
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
+# SWITCHED TO THREADING MODE (Removes Eventlet dependency)
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode="threading")
 
 # ----------------------------------------------------
 # 1. MAIL CONFIGURATION
@@ -59,10 +62,21 @@ mail = Mail(app)
 MONGO_URI = os.getenv("MONGO_URI")
 DB_NAME = "physiocheck_db"
 
+# Initialize as None to handle connection failures gracefully
+client = None
+db = None
+users_collection = None
+otp_collection = None
+sessions_collection = None
+exercises_collection = None
+protocols_collection = None
+notifications_collection = None
+
 try:
+    print("⏳ Attempting to connect to MongoDB...")
     client = MongoClient(
         MONGO_URI,
-        serverSelectionTimeoutMS=5000,
+        serverSelectionTimeoutMS=5000, # 5 second timeout
         tls=True,
         tlsCAFile=certifi.where(),
         tlsAllowInvalidCertificates=True,
@@ -81,22 +95,19 @@ try:
     print(f"✅ Connected to MongoDB Cloud: {DB_NAME}")
 except Exception as e:
     print(f"⚠️ DB Error: {e}")
-    users_collection = None
-    otp_collection = None
-    sessions_collection = None
-    notifications_collection = None
+    print("⚠️ WARNING: Application running without Database. Login/Signup will fail.")
 
 # ----------------------------------------------------
 # 3. WORKOUT SESSION MANAGEMENT
 # ----------------------------------------------------
 workout_session = None
-last_session_report = None  # NEW: Store last report to persist after session ends
+last_session_report = None
 
 def init_session(exercise_name="Bicep Curl"):
     """Initialize a new workout session, ensuring the old one is closed."""
     global workout_session, last_session_report
     
-    # 1. Force close existing session to release camera
+    # 1. Force close existing session
     if workout_session:
         try:
             print("🛑 Stopping previous session...")
@@ -119,7 +130,7 @@ def generate_video_frames():
     from constants import WorkoutPhase
     global workout_session
     
-    # Capture local reference to prevent NoneType errors during threading
+    # Capture local reference
     current_session = workout_session
     
     if current_session is None:
@@ -128,7 +139,6 @@ def generate_video_frames():
     # Loop to capture frames
     while current_session.phase != WorkoutPhase.INACTIVE:
         try:
-            # Double check if session was externally stopped
             if current_session is None:
                 break
 
@@ -140,8 +150,8 @@ def generate_video_frames():
             # Emit real-time data to frontend via WebSocket
             socketio.emit("workout_update", current_session.get_state_dict())
             
-            # Allow eventlet to switch contexts (Critical for async)
-            socketio.sleep(0.01) 
+            # Control frame rate (Standard time.sleep works in threading mode)
+            time.sleep(0.01)
 
             # Encode frame for HTTP Stream
             ret, buffer = cv2.imencode(".jpg", frame)
@@ -163,13 +173,13 @@ def _get_frontend_exercise_list():
     meta_map = {
         "Bicep Curl": {
             "category": "Strength",
-            "description": "A fundamental exercise for building arm strength and definition. Focuses on the biceps brachii.",
+            "description": "A fundamental exercise for building arm strength and definition.",
             "instructions": [
                 "Stand tall with feet shoulder-width apart.",
                 "Hold dumbbells with palms facing forward.",
                 "Keep elbows close to your torso at all times.",
                 "Curl the weights up while contracting biceps.",
-                "Lower the weights slowly to the starting position."
+                "Lower the weights slowly."
             ],
             "difficulty": "Beginner",
             "duration": "5 Mins",
@@ -179,13 +189,12 @@ def _get_frontend_exercise_list():
         },
         "Knee Lift": {
             "category": "Mobility",
-            "description": "Improves hip mobility and balance. Great for warm-ups and rehabilitation.",
+            "description": "Improves hip mobility and balance.",
             "instructions": [
                 "Stand straight with feet together.",
                 "Lift one knee up towards your chest.",
-                "Hold for a second, maintaining balance.",
-                "Lower slowly and switch legs.",
-                "Keep your back straight throughout."
+                "Hold for a second.",
+                "Lower slowly and switch legs."
             ],
             "difficulty": "Beginner",
             "duration": "5 Mins",
@@ -195,12 +204,11 @@ def _get_frontend_exercise_list():
         },
         "Shoulder Press": {
             "category": "Strength",
-            "description": "Builds shoulder and upper arm strength. Enhances overhead stability.",
+            "description": "Builds shoulder and upper arm strength.",
             "instructions": [
-                "Hold dumbbells at shoulder height, palms forward.",
-                "Press weights upwards until arms are extended.",
-                "Avoid locking your elbows at the top.",
-                "Lower back down to shoulder level with control."
+                "Hold dumbbells at shoulder height.",
+                "Press weights upwards.",
+                "Lower back down with control."
             ],
             "difficulty": "Intermediate",
             "duration": "8 Mins",
@@ -210,13 +218,12 @@ def _get_frontend_exercise_list():
         },
         "Squat": {
             "category": "Lower Body",
-            "description": "Compound movement for legs and core. Essential for functional strength.",
+            "description": "Compound movement for legs and core.",
             "instructions": [
                 "Stand with feet shoulder-width apart.",
-                "Push hips back and bend knees as if sitting.",
-                "Keep chest up and back straight.",
-                "Lower until thighs are parallel to the floor.",
-                "Push through heels to return to start."
+                "Push hips back and bend knees.",
+                "Keep chest up.",
+                "Push through heels to return."
             ],
             "difficulty": "Intermediate",
             "duration": "10 Mins",
@@ -226,11 +233,11 @@ def _get_frontend_exercise_list():
         },
         "Standing Row": {
             "category": "Back & Core",
-            "description": "Strengthens the upper back and improves posture.",
+            "description": "Strengthens the upper back.",
             "instructions": [
-                "Stand with slight bend in knees, hinging forward.",
+                "Hinge forward slightly.",
                 "Pull weights towards your waist.",
-                "Squeeze shoulder blades together at the top.",
+                "Squeeze shoulder blades.",
                 "Lower weights with control."
             ],
             "difficulty": "Intermediate",
@@ -309,7 +316,7 @@ def handle_stop_session(data):
         emit("session_stopped", {"status": "error", "message": str(e)})
 
 # ----------------------------------------------------
-# 6. ANALYTICS & AI ROUTES (CRITICAL FIX: ADDED MISSING ROUTE)
+# 6. ANALYTICS & AI ROUTES
 # ----------------------------------------------------
 @app.route("/api/user/analytics_detailed", methods=["POST"])
 def analytics_detailed():
@@ -321,9 +328,8 @@ def analytics_detailed():
     if sessions_collection is None:
         return jsonify({"total_sessions": 0, "history": []})
 
-    sessions = list(sessions_collection.find({"email": email}).sort("timestamp", 1)) # Sort Oldest to Newest for Graphs
+    sessions = list(sessions_collection.find({"email": email}).sort("timestamp", 1))
     
-    # Use AI Engine to process stats if available
     analytics = AIEngine.get_detailed_analytics(sessions)
     return jsonify(analytics)
 
@@ -339,7 +345,6 @@ def ai_prediction():
 
     sessions = list(sessions_collection.find({"email": email}).sort("timestamp", 1))
     
-    # Use AI Engine for prediction
     prediction = AIEngine.get_recovery_prediction(sessions)
     
     if not prediction:
@@ -352,6 +357,9 @@ def ai_prediction():
 # ----------------------------------------------------
 @app.route("/api/auth/send-otp", methods=["POST"])
 def send_otp():
+    if users_collection is None:
+        return jsonify({"error": "Database unavailable. Check server logs."}), 503
+
     data = request.get_json(silent=True) or {}
     email = data.get("email")
 
@@ -376,6 +384,9 @@ def send_otp():
 
 @app.route("/api/auth/login", methods=["POST"])
 def login():
+    if users_collection is None:
+        return jsonify({"error": "Database unavailable. Check server logs."}), 503
+
     data = request.get_json(silent=True) or {}
     user = users_collection.find_one({"email": data.get("email")})
 
@@ -390,6 +401,9 @@ def login():
 
 @app.route("/api/auth/signup-verify", methods=["POST"])
 def signup_verify():
+    if users_collection is None:
+        return jsonify({"error": "Database unavailable. Check server logs."}), 503
+
     data = request.get_json(silent=True) or {}
     email = data.get("email")
     otp_input = data.get("otp")
@@ -419,6 +433,74 @@ def signup_verify():
     otp_collection.delete_one({"email": email})
 
     return jsonify({"user": {"email": email, "name": name, "role": role}}), 201
+
+# --- GOOGLE AUTH ROUTE ---
+@app.route("/api/auth/google", methods=["POST"])
+def google_auth():
+    """Handles Google Login/Signup by verifying token and checking DB."""
+    # EDGE CASE: DB NOT CONNECTED
+    if users_collection is None:
+        print("❌ Login failed: Database not connected")
+        return jsonify({"error": "Database unavailable. Check server logs."}), 503
+
+    data = request.get_json(silent=True) or {}
+    token = data.get("token") # This is an ACCESS TOKEN from frontend
+    role = data.get("role", "patient")
+
+    if not token:
+        return jsonify({"error": "Google token is required"}), 400
+
+    try:
+        # NOTE: Frontend sends an ACCESS TOKEN, not an ID TOKEN.
+        # We must use requests.get() to verify it against Google's UserInfo API.
+        # google-auth library (id_token.verify_oauth2_token) requires an ID Token (JWT).
+        
+        google_response = requests.get(
+            f"https://www.googleapis.com/oauth2/v1/userinfo?access_token={token}",
+            headers={"Accept": "application/json"}
+        )
+        
+        if google_response.status_code != 200:
+            return jsonify({"error": "Invalid Google Token"}), 401
+            
+        google_user = google_response.json()
+        email = google_user.get("email")
+        name = google_user.get("name")
+        
+        if not email:
+            return jsonify({"error": "Email not found in Google profile"}), 400
+
+        # Check if user exists in DB
+        user = users_collection.find_one({"email": email})
+        
+        if user:
+            # User exists -> LOGIN
+            return jsonify({
+                "email": user["email"],
+                "role": user.get("role", "patient"),
+                "name": user["name"]
+            }), 200
+        else:
+            # User does not exist -> REGISTER
+            new_user = {
+                "email": email,
+                "name": name,
+                "role": role,
+                "password": "", 
+                "auth_provider": "google",
+                "created_at": time.time()
+            }
+            users_collection.insert_one(new_user)
+            
+            return jsonify({
+                "email": email,
+                "role": role,
+                "name": name
+            }), 200
+
+    except Exception as e:
+        print(f"Google Auth Error: {e}")
+        return jsonify({"error": "Internal Server Error during Google Auth"}), 500
 
 @app.route("/api/exercises", methods=["GET"])
 def get_exercises():
@@ -494,14 +576,11 @@ def video_feed():
 
 @app.route("/report_data")
 def report_data():
-    """Return the final report of the active OR last finished session."""
     global workout_session, last_session_report
     
-    # Priority 1: Active Session
     if workout_session:
         return jsonify(workout_session.get_final_report())
     
-    # Priority 2: Last Finished Session (Persisted)
     if last_session_report:
         return jsonify(last_session_report)
         
@@ -511,5 +590,6 @@ def report_data():
 # 9. RUN SERVER
 # ----------------------------------------------------
 if __name__ == "__main__":
-    print("🚀 Starting Server with EVENTLET on Port 5001...")
-    socketio.run(app, host="0.0.0.0", port=5001, debug=True)
+    print("🚀 Starting Server with THREADING on Port 5001...")
+    # 'allow_unsafe_werkzeug' is needed when running threading mode with socketio in some envs
+    socketio.run(app, host="0.0.0.0", port=5001, debug=True, allow_unsafe_werkzeug=True)
