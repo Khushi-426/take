@@ -15,6 +15,8 @@ import {
   Volume2,
   VolumeX,
   User,
+  Loader,
+  RefreshCw // Added Refresh icon
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "./context/AuthContext";
@@ -33,7 +35,8 @@ const speak = (text) => {
 };
 
 // --- API CONFIGURATION ---
-const API_URL = "http://127.0.0.1:5001"; // UPDATED PORT
+// CHANGED: Switched to localhost to resolve connection refused errors on some systems
+const API_URL = "http://localhost:5001"; 
 
 const Tracker = () => {
   const navigate = useNavigate();
@@ -45,6 +48,8 @@ const Tracker = () => {
   const [selectedExercise, setSelectedExercise] = useState(null);
 
   const [active, setActive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); 
+  const [fetchError, setFetchError] = useState(false); // New State for API Errors
   const [data, setData] = useState(null);
   const [sessionTime, setSessionTime] = useState(0);
   const [feedback, setFeedback] = useState("Initializing...");
@@ -57,6 +62,7 @@ const Tracker = () => {
 
   const [socket, setSocket] = useState(null);
   const timerRef = useRef(null);
+  const stopTimeoutRef = useRef(null); 
 
   // Audio Ref to prevent repeats
   const lastSpokenRef = useRef("");
@@ -72,13 +78,17 @@ const Tracker = () => {
       setConnectionStatus("CONNECTED");
     });
 
+    newSocket.on("connect_error", (err) => {
+        console.error("Socket Connection Error:", err);
+        setConnectionStatus("DISCONNECTED");
+    });
+
     newSocket.on("disconnect", () => {
       setConnectionStatus("DISCONNECTED");
     });
 
     newSocket.on("session_stopped", () => {
-      clearInterval(timerRef.current);
-      navigate("/report");
+      handleExitNavigation();
     });
 
     newSocket.on("workout_update", (json) => {
@@ -86,33 +96,39 @@ const Tracker = () => {
       handleWorkoutUpdate(json);
     });
 
-    // Fetch exercises from backend API
-    const fetchExercises = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/exercises`);
-        if (response.ok) {
-          const data = await response.json();
-          setExercises(data);
-          // Optional: Set default exercise if needed
-          // const defaultEx = data.find((ex) => ex.title === "Bicep Curl");
-          // if (defaultEx) setSelectedExercise(defaultEx);
-        } else {
-          console.error(
-            "Failed to fetch exercises from backend:",
-            response.status
-          );
-        }
-      } catch (error) {
-        console.error("Network error fetching exercises:", error);
-      }
-    };
     fetchExercises();
 
     return () => {
+      if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
       newSocket.close();
       window.speechSynthesis.cancel();
     };
   }, [navigate]);
+
+  const fetchExercises = async () => {
+    setFetchError(false);
+    try {
+      const response = await fetch(`${API_URL}/api/exercises`);
+      if (response.ok) {
+        const data = await response.json();
+        setExercises(data);
+      } else {
+        console.error("Failed to fetch exercises:", response.status);
+        setFetchError(true);
+      }
+    } catch (error) {
+      console.error("Network error fetching exercises:", error);
+      setFetchError(true);
+    }
+  };
+
+  // --- HELPER: SAFE EXIT ---
+  const handleExitNavigation = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+    navigate("/report");
+  };
 
   // --- 2. LOGIC HANDLER (TTS & Phases) ---
   const handleWorkoutUpdate = (json) => {
@@ -158,7 +174,6 @@ const Tracker = () => {
 
       setFeedback(msg);
 
-      // Trigger Audio ONLY if message changes (Strict)
       if (alertMsg) {
         triggerSpeech(alertMsg);
       }
@@ -173,7 +188,6 @@ const Tracker = () => {
 
   const triggerSpeech = (text) => {
     if (!soundEnabled) return;
-    // STRICT: Only speak if text is DIFFERENT from last spoken
     if (text !== lastSpokenRef.current) {
       speak(text);
       lastSpokenRef.current = text;
@@ -187,9 +201,10 @@ const Tracker = () => {
       return;
     }
 
-    try {
-      setConnectionStatus("CONNECTING");
+    setIsLoading(true); 
+    setConnectionStatus("CONNECTING");
 
+    try {
       const res = await fetch(`${API_URL}/start_tracking`, {
         method: "POST",
         headers: {
@@ -201,7 +216,7 @@ const Tracker = () => {
       if (!res.ok) throw new Error("Server error");
 
       const json = await res.json();
-      if (json.status === "success") {
+      if (json.status === "started") {
         setVideoTimestamp(Date.now());
         setActive(true);
         setSessionTime(0);
@@ -212,23 +227,36 @@ const Tracker = () => {
           () => setSessionTime((t) => t + 1),
           1000
         );
+      } else {
+         throw new Error("Failed to start session");
       }
     } catch (e) {
-      alert("Could not connect to AI Server or start session.");
+      alert("Could not connect to AI Server. Please ensure 'app.py' is running.");
       console.error(e);
       setConnectionStatus("DISCONNECTED");
+      setViewMode("DEMO"); 
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const stopSession = () => {
-    if (socket) {
-      // Send the stop command to the backend via WebSocket
+    setActive(false);
+    
+    if (socket && socket.connected) {
       socket.emit("stop_session", {
         email: user?.email,
         exercise: selectedExercise?.title || "Freestyle",
       });
-      setActive(false);
+    } else {
+      console.warn("Socket disconnected, forcing manual stop.");
     }
+
+    // Fallback Safety Timer
+    stopTimeoutRef.current = setTimeout(() => {
+        console.log("Forcing navigation (timeout)");
+        handleExitNavigation();
+    }, 1000);
   };
 
   const formatTime = (s) => {
@@ -300,7 +328,30 @@ const Tracker = () => {
           gap: "30px",
         }}
       >
-        {exercises.length === 0 ? (
+        {fetchError ? (
+             <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px", color: "#D32F2F" }}>
+                <AlertCircle size={48} style={{ margin: "0 auto 20px" }} />
+                <h3>Cannot connect to AI Server</h3>
+                <p>Please ensure the Python backend (app.py) is running on port 5001.</p>
+                <button 
+                    onClick={fetchExercises}
+                    style={{
+                        marginTop: "20px",
+                        padding: "10px 25px",
+                        background: "#D32F2F",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "20px",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "8px"
+                    }}
+                >
+                    <RefreshCw size={16} /> Retry Connection
+                </button>
+             </div>
+        ) : exercises.length === 0 ? (
           <p
             style={{ gridColumn: "1 / -1", textAlign: "center", color: "#888" }}
           >
@@ -557,12 +608,13 @@ const Tracker = () => {
                 boxShadow: "0 10px 25px rgba(44, 93, 49, 0.3)",
                 transition: "transform 0.1s",
               }}
+              disabled={isLoading}
               onMouseDown={(e) =>
                 (e.currentTarget.style.transform = "scale(0.98)")
               }
               onMouseUp={(e) => (e.currentTarget.style.transform = "scale(1)")}
             >
-              <Play size={20} fill="currentColor" /> Start Session
+              {isLoading ? "Connecting..." : <> <Play size={20} fill="currentColor" /> Start Session </>}
             </button>
           </div>
         </div>
@@ -700,7 +752,7 @@ const Tracker = () => {
                       paddingBottom: "10px",
                     }}
                   >
-                    {/* <<< CRITICAL FIX: Dynamically display ARM/SIDE and JOINT NAME >>> */}
+                    {/* Dynamic Joint Name Display */}
                     {arm} {jointName.toUpperCase()}
                     <span style={{ color: "#2C5D31" }}>
                       {metrics ? metrics.stage : "--"}
@@ -823,6 +875,10 @@ const Tracker = () => {
                 src={`${API_URL}/video_feed?t=${videoTimestamp}`}
                 style={{ width: "100%", height: "100%", objectFit: "contain" }}
                 alt="Stream"
+                onError={() => {
+                  setFeedback("Camera Stream Failed");
+                  setActive(false);
+                }}
               />
             ) : (
               <div
@@ -831,15 +887,20 @@ const Tracker = () => {
                   position: "absolute",
                   inset: 0,
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
+                  gap: "20px"
                 }}
               >
-                Initializing Camera...
+                {isLoading ? <Loader className="spin-animation" size={48} /> : <AlertCircle size={48} />}
+                <div style={{ fontSize: "1.2rem", opacity: 0.8 }}>
+                   {isLoading ? "Starting Camera..." : "Initializing Camera..."}
+                </div>
               </div>
             )}
 
-            {/* REFERENCE SKELETON OVERLAY (For Calibration) */}
+            {/* REFERENCE SKELETON OVERLAY */}
             {data?.status === "CALIBRATION" && (
               <div
                 style={{
@@ -876,7 +937,7 @@ const Tracker = () => {
 
             {/* OVERLAYS */}
             <AnimatePresence>
-              {/* 1. CALIBRATION OVERLAY - TRANSPARENT NOW */}
+              {/* 1. CALIBRATION OVERLAY */}
               {data?.status === "CALIBRATION" && (
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -885,7 +946,7 @@ const Tracker = () => {
                   style={{
                     position: "absolute",
                     inset: 0,
-                    background: "rgba(0,0,0,0.1)", // More Transparent
+                    background: "rgba(0,0,0,0.1)", 
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
@@ -994,6 +1055,15 @@ const Tracker = () => {
         {viewMode === "DEMO" && renderDemo()}
         {viewMode === "SESSION" && renderSession()}
       </AnimatePresence>
+      <style>{`
+        .spin-animation {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };

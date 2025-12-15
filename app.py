@@ -36,7 +36,8 @@ from constants import EXERCISE_PRESETS
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+# UPDATED CORS: Explicitly allow all origins to prevent blocking frontend requests
+CORS(app, resources={r"/*": {"origins": "*"}})
 bcrypt = Bcrypt(app)
 
 # Use 'eventlet' async mode for stable WebSocket streaming
@@ -89,10 +90,11 @@ except Exception as e:
 # 3. WORKOUT SESSION MANAGEMENT
 # ----------------------------------------------------
 workout_session = None
+last_session_report = None  # NEW: Store last report to persist after session ends
 
 def init_session(exercise_name="Bicep Curl"):
     """Initialize a new workout session, ensuring the old one is closed."""
-    global workout_session
+    global workout_session, last_session_report
     
     # 1. Force close existing session to release camera
     if workout_session:
@@ -104,6 +106,9 @@ def init_session(exercise_name="Bicep Curl"):
         finally:
             workout_session = None
 
+    # Reset last report for new session
+    last_session_report = None
+    
     # 2. Start new session
     print(f"🎥 Initializing Camera for {exercise_name}...")
     from workout_session import WorkoutSession
@@ -114,19 +119,26 @@ def generate_video_frames():
     from constants import WorkoutPhase
     global workout_session
     
-    if workout_session is None:
+    # Capture local reference to prevent NoneType errors during threading
+    current_session = workout_session
+    
+    if current_session is None:
         return
 
     # Loop to capture frames
-    while workout_session.phase != WorkoutPhase.INACTIVE:
+    while current_session.phase != WorkoutPhase.INACTIVE:
         try:
-            frame, should_continue = workout_session.process_frame()
+            # Double check if session was externally stopped
+            if current_session is None:
+                break
+
+            frame, should_continue = current_session.process_frame()
             
             if not should_continue or frame is None:
                 break
 
             # Emit real-time data to frontend via WebSocket
-            socketio.emit("workout_update", workout_session.get_state_dict())
+            socketio.emit("workout_update", current_session.get_state_dict())
             
             # Allow eventlet to switch contexts (Critical for async)
             socketio.sleep(0.01) 
@@ -262,7 +274,7 @@ def handle_disconnect():
 
 @socketio.on("stop_session")
 def handle_stop_session(data):
-    global workout_session
+    global workout_session, last_session_report
     if not workout_session:
         return
 
@@ -272,13 +284,15 @@ def handle_stop_session(data):
 
     try:
         print("🛑 Stop session command received")
-        report = workout_session.get_final_report()
+        # SAVE REPORT BEFORE STOPPING
+        last_session_report = workout_session.get_final_report()
+        
         workout_session.stop()
         workout_session = None 
 
-        if email and sessions_collection:
-            r = report["summary"]["RIGHT"]
-            l = report["summary"]["LEFT"]
+        if email and sessions_collection is not None:
+            r = last_session_report["summary"]["RIGHT"]
+            l = last_session_report["summary"]["LEFT"]
             
             sessions_collection.insert_one({
                 "email": email,
@@ -292,9 +306,49 @@ def handle_stop_session(data):
         emit("session_stopped", {"status": "success"})
     except Exception as e:
         print(f"Stop session error: {e}")
+        emit("session_stopped", {"status": "error", "message": str(e)})
 
 # ----------------------------------------------------
-# 6. AUTH ROUTES
+# 6. ANALYTICS & AI ROUTES (CRITICAL FIX: ADDED MISSING ROUTE)
+# ----------------------------------------------------
+@app.route("/api/user/analytics_detailed", methods=["POST"])
+def analytics_detailed():
+    """Returns detailed workout history for graphs."""
+    data = request.get_json(silent=True) or {}
+    email = data.get("email")
+    if not email: return jsonify({"error": "Email required"}), 400
+
+    if sessions_collection is None:
+        return jsonify({"total_sessions": 0, "history": []})
+
+    sessions = list(sessions_collection.find({"email": email}).sort("timestamp", 1)) # Sort Oldest to Newest for Graphs
+    
+    # Use AI Engine to process stats if available
+    analytics = AIEngine.get_detailed_analytics(sessions)
+    return jsonify(analytics)
+
+@app.route("/api/user/ai_prediction", methods=["POST"])
+def ai_prediction():
+    """Returns AI-based recovery prediction and risk analysis."""
+    data = request.get_json(silent=True) or {}
+    email = data.get("email")
+    if not email: return jsonify({"error": "Email required"}), 400
+
+    if sessions_collection is None:
+        return jsonify({"error": "Database unavailable"}), 500
+
+    sessions = list(sessions_collection.find({"email": email}).sort("timestamp", 1))
+    
+    # Use AI Engine for prediction
+    prediction = AIEngine.get_recovery_prediction(sessions)
+    
+    if not prediction:
+        return jsonify({"error": "Not enough data for prediction"}), 200 
+
+    return jsonify(prediction)
+
+# ----------------------------------------------------
+# 7. AUTH & OTHER ROUTES
 # ----------------------------------------------------
 @app.route("/api/auth/send-otp", methods=["POST"])
 def send_otp():
@@ -366,44 +420,9 @@ def signup_verify():
 
     return jsonify({"user": {"email": email, "name": name, "role": role}}), 201
 
-# ----------------------------------------------------
-# 7. EXERCISE ROUTES
-# ----------------------------------------------------
 @app.route("/api/exercises", methods=["GET"])
 def get_exercises():
     return jsonify(_get_frontend_exercise_list())
-
-# ----------------------------------------------------
-# 8. ANALYTICS ROUTES
-# ----------------------------------------------------
-@app.route("/api/user/analytics_detailed", methods=["POST"])
-def analytics_detailed():
-    data = request.get_json(silent=True) or {}
-    email = data.get("email")
-    if not email: return jsonify({"error": "Email required"}), 400
-
-    sessions = list(sessions_collection.find({"email": email}).sort("timestamp", -1))
-    if not sessions: return jsonify({"total_sessions": 0, "history": []})
-
-    history = []
-    total_acc = 0
-    for s in sessions:
-        reps = s.get("total_reps", 0)
-        errors = s.get("total_errors", 0)
-        acc = max(0, 100 - int((errors / max(reps, 1)) * 20))
-        total_acc += acc
-        history.append({
-            "date": datetime.fromtimestamp(s["timestamp"]).strftime("%Y-%m-%d"),
-            "exercise": s.get("exercise"),
-            "reps": reps,
-            "accuracy": acc
-        })
-
-    return jsonify({
-        "total_sessions": len(sessions),
-        "average_accuracy": total_acc // len(sessions),
-        "history": history
-    })
 
 @app.route("/api/therapist/patients", methods=["GET"])
 def therapist_patients():
@@ -445,24 +464,29 @@ def therapist_notifications():
     return jsonify(response), 200
 
 # ----------------------------------------------------
-# 9. TRACKING + STREAM
+# 8. STREAMING ROUTES
 # ----------------------------------------------------
 @app.route("/start_tracking", methods=["POST"])
 def start_tracking():
     data = request.get_json(silent=True) or {}
     exercise = data.get("exercise", "Bicep Curl")
 
-    init_session(exercise)
-    
-    if workout_session:
-        workout_session.start()
-        return jsonify({"status": "started", "exercise": exercise})
-    else:
-        return jsonify({"error": "Failed to initialize camera"}), 500
+    print(f"🚀 Received start_tracking request for: {exercise}")
+
+    try:
+        init_session(exercise)
+        
+        if workout_session:
+            workout_session.start()
+            return jsonify({"status": "started", "exercise": exercise})
+        else:
+            return jsonify({"error": "Failed to initialize workout session"}), 500
+    except Exception as e:
+        print(f"❌ Error in start_tracking: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/video_feed")
 def video_feed():
-    """Route that the <img> tag points to."""
     return Response(
         generate_video_frames(),
         mimetype="multipart/x-mixed-replace; boundary=frame"
@@ -470,12 +494,21 @@ def video_feed():
 
 @app.route("/report_data")
 def report_data():
+    """Return the final report of the active OR last finished session."""
+    global workout_session, last_session_report
+    
+    # Priority 1: Active Session
     if workout_session:
         return jsonify(workout_session.get_final_report())
-    return jsonify({"error": "No session data"})
+    
+    # Priority 2: Last Finished Session (Persisted)
+    if last_session_report:
+        return jsonify(last_session_report)
+        
+    return jsonify({"error": "No session data found"})
 
 # ----------------------------------------------------
-# 10. RUN SERVER
+# 9. RUN SERVER
 # ----------------------------------------------------
 if __name__ == "__main__":
     print("🚀 Starting Server with EVENTLET on Port 5001...")

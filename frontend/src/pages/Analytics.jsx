@@ -1,161 +1,146 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { 
-  LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, 
-  CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie 
-} from 'recharts';
-import { ArrowLeft, TrendingUp, Activity, AlertCircle, Calendar } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from "recharts";
+import { Activity, Calendar, TrendingUp, AlertCircle } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+
+// UPDATED: Pointing to Python Backend
+const API_URL = "http://localhost:5001";
 
 const Analytics = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (user?.email) {
-        try {
-          const res = await axios.post('http://127.0.0.1:5000/api/user/analytics_detailed', { email: user.email });
-          setData(res.data);
-        } catch (err) {
-          console.error("Analytics Error:", err);
-        } finally {
-          setLoading(false);
-        }
+      try {
+        if (!user?.email) return;
+
+        const res = await fetch(`${API_URL}/api/user/analytics_detailed`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: user.email }),
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch analytics");
+
+        const json = await res.json();
+        setData(json);
+      } catch (err) {
+        console.error("Analytics Error:", err);
+        setError("Could not load analytics data.");
+      } finally {
+        setLoading(false);
       }
     };
+
     fetchData();
   }, [user]);
 
-  if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', background: '#F9F7F3', color: '#666' }}>
-      <Activity className="spin" size={32} /> Loading Analytics...
-    </div>
-  );
+  if (loading) return <div style={centerStyle}>Loading Analytics...</div>;
+  if (error) return <div style={{...centerStyle, color: "red"}}>{error}</div>;
 
-  if (!data) return null;
-
-  // --- Animation Variants ---
-  const container = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.1 } } };
-  const item = { hidden: { y: 20, opacity: 0 }, show: { y: 0, opacity: 1 } };
-
-  const COLORS = ['#2C5D31', '#69B341', '#FFBB28', '#FF8042', '#0088FE'];
+  // Safe fallback if history is empty
+  const history = data?.history || [];
+  const exerciseStats = data?.exercise_stats || [];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F9F7F3', padding: '40px 5%' }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-        
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-          <div>
-            <h1 style={{ fontSize: '2.5rem', color: '#1A3C34', fontWeight: '800', margin: 0 }}>Performance <span style={{color:'#69B341'}}>Analytics</span></h1>
-            <p style={{ color: '#666', marginTop: '5px' }}>Deep dive into your recovery metrics and form consistency.</p>
-          </div>
-          <button 
-            onClick={() => navigate('/profile/overview')} 
-            style={{ 
-                background: '#fff', border: '1px solid #ddd', padding: '10px 20px', borderRadius: '30px',
-                color: '#4A635D', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-                fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 5px 15px rgba(0,0,0,0.05)'
-            }}
-          >
-            <ArrowLeft size={18} /> Back to Profile
-          </button>
+    <div style={{ padding: "40px 5%", background: "#F9F7F3", minHeight: "100vh" }}>
+      <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+        <h1 style={{ fontSize: "2.5rem", color: "#1A3C34", marginBottom: "30px" }}>
+          Your Progress
+        </h1>
+
+        {/* KPI Cards */}
+        <div style={gridStyle}>
+          <Card
+            icon={<Activity color="#fff" />}
+            title="Avg. Accuracy"
+            value={`${data?.average_accuracy || 0}%`}
+            color="#2C5D31"
+          />
+          <Card
+            icon={<TrendingUp color="#fff" />}
+            title="Total Sessions"
+            value={history.length}
+            color="#EF6C00"
+          />
+          <Card
+            icon={<Calendar color="#fff" />}
+            title="Last Workout"
+            value={history.length > 0 ? history[history.length - 1].date_short : "N/A"}
+            color="#1565C0"
+          />
         </div>
 
-        <motion.div variants={container} initial="hidden" animate="show" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '25px' }}>
+        {/* Charts */}
+        <div style={{ marginTop: "40px", display: "grid", gap: "30px", gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))" }}>
+          
+          {/* Line Chart: Accuracy Over Time */}
+          <div style={chartCardStyle}>
+            <h3 style={chartTitleStyle}>Accuracy Trend</h3>
+            <div style={{ height: "300px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={history}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="date_short" />
+                  <YAxis domain={[0, 100]} />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="accuracy" stroke="#2C5D31" strokeWidth={3} dot={{ r: 4 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-            {/* 1. Accuracy Trend (Line Chart) */}
-            <motion.div variants={item} style={{ background: '#fff', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)', gridColumn: '1 / -1' }}>
-                <h3 style={{ color: '#1A3C34', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <TrendingUp size={20} color="#69B341"/> Form Accuracy Trend
-                </h3>
-                <div style={{ height: '300px', width: '100%' }}>
-                    <ResponsiveContainer>
-                        <AreaChart data={data.history} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                            <defs>
-                                <linearGradient id="colorAccuracy" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#69B341" stopOpacity={0.3}/>
-                                    <stop offset="95%" stopColor="#69B341" stopOpacity={0}/>
-                                </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                            <XAxis dataKey="date_short" stroke="#999" tick={{fontSize: 12}} />
-                            <YAxis stroke="#999" tick={{fontSize: 12}} domain={[0, 100]} />
-                            <Tooltip 
-                                contentStyle={{ borderRadius: '10px', border: 'none', boxShadow: '0 5px 20px rgba(0,0,0,0.1)' }}
-                            />
-                            <Area type="monotone" dataKey="accuracy" stroke="#2C5D31" strokeWidth={3} fillOpacity={1} fill="url(#colorAccuracy)" name="Accuracy %" />
-                        </AreaChart>
-                    </ResponsiveContainer>
-                </div>
-            </motion.div>
+          {/* Bar Chart: Exercise Frequency */}
+          <div style={chartCardStyle}>
+            <h3 style={chartTitleStyle}>Exercise Volume</h3>
+            <div style={{ height: "300px" }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={exerciseStats}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="total_reps" fill="#1565C0" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-            {/* 2. Volume by Exercise (Bar Chart) */}
-            <motion.div variants={item} style={{ background: '#fff', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
-                <h3 style={{ color: '#1A3C34', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Activity size={20} color="#69B341"/> Reps by Exercise
-                </h3>
-                <div style={{ height: '250px', width: '100%' }}>
-                    <ResponsiveContainer>
-                        <BarChart data={data.exercise_stats} layout="vertical">
-                             <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#eee" />
-                             <XAxis type="number" hide />
-                             <YAxis dataKey="name" type="category" width={100} tick={{fontSize: 11, fontWeight: 600}} stroke="#666" />
-                             <Tooltip cursor={{fill: 'transparent'}} contentStyle={{ borderRadius: '8px' }} />
-                             <Bar dataKey="total_reps" fill="#2C5D31" radius={[0, 10, 10, 0]} barSize={20}>
-                                {data.exercise_stats.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                             </Bar>
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </motion.div>
-
-            {/* 3. Session Consistency (Bar Chart) */}
-            <motion.div variants={item} style={{ background: '#fff', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.03)' }}>
-                <h3 style={{ color: '#1A3C34', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <Calendar size={20} color="#69B341"/> Recent Volume
-                </h3>
-                <div style={{ height: '250px', width: '100%' }}>
-                    <ResponsiveContainer>
-                        <BarChart data={data.history.slice(-7)}>
-                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                             <XAxis dataKey="date_short" stroke="#999" tick={{fontSize: 10}} />
-                             <YAxis stroke="#999" tick={{fontSize: 10}} />
-                             <Tooltip contentStyle={{ borderRadius: '8px' }} />
-                             <Bar dataKey="reps" fill="#1A3C34" radius={[4, 4, 0, 0]} name="Total Reps" />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </motion.div>
-            
-            {/* 4. Insight Card */}
-            <motion.div variants={item} style={{ background: 'linear-gradient(135deg, #1A3C34 0%, #2C5D31 100%)', padding: '30px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(44, 93, 49, 0.2)', color: 'white', display:'flex', flexDirection:'column', justifyContent:'center' }}>
-                <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'15px', opacity: 0.9 }}>
-                    <AlertCircle size={24} color="#69B341" />
-                    <span style={{ fontWeight: 'bold', letterSpacing:'1px' }}>AI INSIGHT</span>
-                </div>
-                <h2 style={{ fontSize: '1.8rem', marginBottom:'10px' }}>
-                    {data.average_accuracy > 85 ? "Excellent Form!" : "Focus Required"}
-                </h2>
-                <p style={{ opacity: 0.8, lineHeight: '1.6' }}>
-                    Your average form accuracy is <strong>{data.average_accuracy}%</strong> across all exercises. 
-                    {data.average_accuracy > 85 
-                        ? " You are maintaining great stability. Consider increasing your rep volume." 
-                        : " Try slowing down your reps to improve detection accuracy."}
-                </p>
-            </motion.div>
-
-        </motion.div>
+        </div>
       </div>
     </div>
   );
 };
+
+// --- STYLES ---
+const centerStyle = { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "1.2rem", color: "#666" };
+const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" };
+const chartCardStyle = { background: "#fff", padding: "25px", borderRadius: "20px", boxShadow: "0 5px 20px rgba(0,0,0,0.05)" };
+const chartTitleStyle = { marginBottom: "20px", color: "#444", fontSize: "1.2rem" };
+
+const Card = ({ icon, title, value, color }) => (
+  <div style={{ background: "white", padding: "25px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "20px", boxShadow: "0 5px 20px rgba(0,0,0,0.05)" }}>
+    <div style={{ width: "50px", height: "50px", borderRadius: "12px", background: color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      {icon}
+    </div>
+    <div>
+      <div style={{ fontSize: "0.9rem", color: "#888", fontWeight: "600" }}>{title}</div>
+      <div style={{ fontSize: "1.8rem", fontWeight: "800", color: "#333" }}>{value}</div>
+    </div>
+  </div>
+);
 
 export default Analytics;
