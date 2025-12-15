@@ -1,6 +1,6 @@
 // models/User.js
 
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -8,21 +8,21 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
     trim: true,
-    lowercase: true
+    lowercase: true,
   },
   password: {
     type: String,
-    required: true
+    required: true,
   },
   role: {
     type: String,
-    enum: ['THERAPIST', 'PATIENT'],
-    required: true
+    enum: ["THERAPIST", "PATIENT"],
+    required: true,
   },
   createdAt: {
     type: Date,
-    default: Date.now
-  }
+    default: Date.now,
+  },
 });
 
 // NO pre-save hook, passwords are stored as plain text
@@ -32,5 +32,5 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return candidatePassword === this.password;
 };
 
-const User = mongoose.models.User || mongoose.model('User', userSchema);
+const User = mongoose.models.User || mongoose.model("User", userSchema);
 module.exports = User;
