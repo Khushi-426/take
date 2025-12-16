@@ -78,6 +78,9 @@ class WorkoutSession:
             'LEFT': False
         }
         
+        # FIX: Initialize listening_mode to resolve 'AttributeError'
+        self.listening_mode = False 
+        
         self.last_feedback_text = {
             'RIGHT': "",
             'LEFT': ""
@@ -165,13 +168,83 @@ class WorkoutSession:
     def set_listening(self, active: bool):
         self.listening_mode = active
 
+    def get_cv_color(self, color_name: str) -> Tuple[int, int, int]:
+        """Converts internal color name to BGR tuple for OpenCV."""
+        colors = {
+            "GREEN": (0, 255, 0),
+            "YELLOW": (0, 255, 255),
+            "RED": (0, 0, 255),
+            "GRAY": (150, 150, 150),
+            "WHITE": (255, 255, 255)
+        }
+        return colors.get(color_name.upper(), (255, 255, 255))
+
+    def _draw_overlay(self, image: np.ndarray):
+        """Draws the Ghost Pose, instruction text, and metrics onto the frame."""
+        h, w, _ = image.shape
+        ghost_color = self.get_cv_color(self.ghost_pose.color)
+
+        # 1. Draw Ghost Connections (Skeleton)
+        for p1_idx, p2_idx in self.ghost_pose.connections:
+            p1 = self.ghost_pose.landmarks.get(p1_idx)
+            p2 = self.ghost_pose.landmarks.get(p2_idx)
+            
+            if p1 and p2:
+                # Convert normalized coordinates (0-1) to pixel coordinates
+                p1_px = (int(p1.x * w), int(p1.y * h))
+                p2_px = (int(p2.x * w), int(p2.y * h))
+                
+                # Draw line for connection
+                cv2.line(image, p1_px, p2_px, ghost_color, 2)
+                # Draw circle for joint
+                cv2.circle(image, p1_px, 5, ghost_color, -1)
+                cv2.circle(image, p2_px, 5, ghost_color, -1)
+
+        # 2. Draw Instruction Text (Top-Left)
+        instruction_text = self.ghost_pose.instruction or "Ready"
+        cv2.putText(image, instruction_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, ghost_color, 2, cv2.LINE_AA)
+
+        # 3. Draw Rep Count and Feedback (Bottom-Left for User's Right Arm, Bottom-Right for User's Left Arm)
+        right_metrics = self.arm_metrics['RIGHT']
+        left_metrics = self.arm_metrics['LEFT']
+
+        # Right Arm Metrics (Appears on Left of Screen)
+        rep_text_r = f"REPS (R): {right_metrics.rep_count}"
+        feedback_r = right_metrics.feedback or ""
+        fb_color_r = self.get_cv_color(right_metrics.feedback_color)
+        
+        cv2.putText(image, rep_text_r, (10, h - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, self.get_cv_color("WHITE"), 2, cv2.LINE_AA)
+        if feedback_r:
+            cv2.putText(image, feedback_r, (10, h - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, fb_color_r, 2, cv2.LINE_AA)
+
+        # Left Arm Metrics (Appears on Right of Screen)
+        rep_text_l = f"REPS (L): {left_metrics.rep_count}"
+        feedback_l = left_metrics.feedback or ""
+        fb_color_l = self.get_cv_color(left_metrics.feedback_color)
+
+        cv2.putText(image, rep_text_l, (w - 200, h - 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, self.get_cv_color("WHITE"), 2, cv2.LINE_AA)
+        if feedback_l:
+            cv2.putText(image, feedback_l, (w - 200, h - 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, fb_color_l, 2, cv2.LINE_AA)
+
+
     def process_frame(self) -> Tuple[Optional[np.ndarray], bool]:
         """Process single frame - OPTIMIZED FOR SPEED"""
         from constants import WorkoutPhase
         
+        # Check if camera is initialized and open
         if self.cap is None or not self.cap.isOpened(): 
-            return None, False
-            
+            # Fallback: create a black frame with an error message
+            image = np.zeros((480, 640, 3), dtype=np.uint8)
+            text = "ERROR: Camera Not Found or In Use."
+            text2 = "Check permissions/backend access (index 0)."
+            cv2.putText(image, text, (50, 200), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 0, 255), 2)
+            cv2.putText(image, text2, (50, 250), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+            self.ghost_pose.instruction = "CAMERA ERROR"
+            self.ghost_pose.color = "RED"
+            # Return the fallback image to keep the stream alive
+            self._draw_overlay(image) 
+            return image, True
+        
         success, image = self.cap.read()
         if not success: return None, False
         
@@ -190,6 +263,9 @@ class WorkoutSession:
         if self.listening_mode:
             image = cv2.flip(image, 1)
             cv2.putText(image, "LISTENING...", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            
+            # Draw overlay before returning in listening mode
+            self._draw_overlay(image) 
             return image, True
 
         current_time = time.time()
@@ -203,7 +279,8 @@ class WorkoutSession:
         elif self.phase == WorkoutPhase.ACTIVE:
             self._process_workout(results, current_time)
         
-        # Skip drawing user skeleton for speed (ghost is enough)
+        # Draw the Ghost Pose and overlay before returning the image
+        self._draw_overlay(image) 
         
         return image, True
     

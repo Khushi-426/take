@@ -23,6 +23,7 @@ import { useAuth } from "./context/AuthContext";
 import { io } from "socket.io-client";
 
 import GhostModelOverlay from "./components/GhostModelOverlay";
+import AICoach from "./components/AICoach"; // <-- ADDED AICoach Import
 
 // --- UTILITY: TTS ---
 const speak = (text) => {
@@ -152,7 +153,7 @@ const Tracker = () => {
 
   const handleExitNavigation = () => {
     if (timerRef.current) clearInterval(timerRef.current);
-    if (stopTimeoutRef.current) clearTimeout(stopTimeoutRef.current);
+    if (stopTimeoutRef.current) clearTimeout(timerRef.current);
     navigate("/report");
   };
 
@@ -288,19 +289,18 @@ const Tracker = () => {
 
   // --- 4. BOT INTERACTION HANDLERS ---
   const handleListeningChange = (isListening) => {
-      if(socket) {
-          socket.emit('toggle_listening', { active: isListening });
-      }
+    if (socket) {
+      socket.emit("toggle_listening", { active: isListening });
+    }
   };
 
   const handleBotCommand = (action) => {
-      console.log("Tracker Received Command:", action);
-      if (action === 'STOP') {
-          stopSession();
-      } 
-      else if (action === 'RECALIBRATE') {
-          startSession(); 
-      }
+    console.log("Tracker Received Command:", action);
+    if (action === "STOP") {
+      stopSession();
+    } else if (action === "RECALIBRATE") {
+      startSession();
+    }
   };
 
   const formatTime = (s) => {
@@ -1038,7 +1038,7 @@ const Tracker = () => {
                 </div>
               </div>
             )}
-            
+
             <AnimatePresence>
               {/* 1. CALIBRATION OVERLAY (unchanged) */}
               {data?.status === "CALIBRATION" && (
@@ -1155,6 +1155,26 @@ const Tracker = () => {
               )}
             </AnimatePresence>
           </div>
+        </div>
+
+        {/* AI Coach Area (NEW PANEL) */}
+        <div
+          style={{
+            width: "300px", // Fixed width for the coach panel
+            borderLeft: "1px solid #eee",
+            background: "#F9F7F3",
+          }}
+        >
+          <AICoach
+            data={data}
+            feedback={feedback}
+            exerciseName={selectedExercise?.title}
+            active={active}
+            gesture={data.gesture}
+            onCommand={handleBotCommand}
+            onListeningChange={handleListeningChange}
+            userEmail={user?.email}
+          />
         </div>
       </motion.div>
     );
