@@ -71,14 +71,14 @@ class WorkoutSession:
 
         # AI State Management - Optimized timing
         self.last_ai_check = 0
-        self.ai_interval = 0.1  # Fast checks (100ms)
+        # FIX: Slower AI check (5 FPS) for better video performance
+        self.ai_interval = 0.2  
         
         self.ai_latched_state = {
             'RIGHT': False,
             'LEFT': False
         }
         
-        # FIX: Initialize listening_mode to resolve 'AttributeError'
         self.listening_mode = False 
         
         self.last_feedback_text = {
@@ -118,6 +118,9 @@ class WorkoutSession:
         # Cache for performance
         self._last_ghost_update = 0
         self._ghost_update_interval = 0.0 # Update every frame
+        
+        # Tracker for smooth transition between countdown and active
+        self._frames_in_active = 0 
     
     def start(self):
         """Initialize new workout session - FAST START"""
@@ -134,6 +137,8 @@ class WorkoutSession:
         self.ai_latched_state = {'RIGHT': False, 'LEFT': False}
         self.last_feedback_text = {'RIGHT': "", 'LEFT': ""}
         self.ghost_pose = GhostPose(instruction="Ready...", connections=self.ghost_connections) 
+        # FIX: Reset frame counter on start
+        self._frames_in_active = 0 
 
         # Start camera with optimal settings for SPEED
         self.cap = cv2.VideoCapture(0)
@@ -277,7 +282,17 @@ class WorkoutSession:
         elif self.phase == WorkoutPhase.COUNTDOWN:
             self._process_countdown(current_time)
         elif self.phase == WorkoutPhase.ACTIVE:
-            self._process_workout(results, current_time)
+            
+            # FIX: Skip processing for the first 5 frames for maximum stabilization
+            STABILIZATION_FRAMES = 5 
+            
+            if self._frames_in_active < STABILIZATION_FRAMES:
+                # Only increment counter; skip the heavy processing: _process_workout
+                self._frames_in_active += 1
+            else:
+                # Run full processing after stabilization
+                self._process_workout(results, current_time)
+
         
         # Draw the Ghost Pose and overlay before returning the image
         self._draw_overlay(image) 
@@ -351,7 +366,7 @@ class WorkoutSession:
 
         current_time = time.time()
         
-        self._last_ghost_update = current_time
+        self._last_ghost_update = 0
 
         metrics = self.arm_metrics['RIGHT']
         
@@ -472,7 +487,7 @@ class WorkoutSession:
             self.ghost_pose.color = "GRAY"
             return
         
-        # 1. Fast AI checks (throttled to 100ms)
+        # 1. Fast AI checks (throttled to 200ms)
         if (current_time - self.last_ai_check) > self.ai_interval:
             self.last_ai_check = current_time
             self._update_ai_latch(results)

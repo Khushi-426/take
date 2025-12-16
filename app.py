@@ -150,8 +150,7 @@ def generate_video_frames():
             # Emit real-time data to frontend via WebSocket
             socketio.emit("workout_update", current_session.get_state_dict())
             
-            # Control frame rate (Standard time.sleep works in threading mode)
-            time.sleep(0.01)
+            # REMOVED: time.sleep(0.01) to allow thread to run at max speed for smoother rendering
 
             # Encode frame for HTTP Stream
             ret, buffer = cv2.imencode(".jpg", frame)
@@ -314,6 +313,16 @@ def handle_stop_session(data):
     except Exception as e:
         print(f"Stop session error: {e}")
         emit("session_stopped", {"status": "error", "message": str(e)})
+
+# New socket event to handle AICoach listening mode toggle
+@socketio.on("toggle_listening")
+def handle_toggle_listening(data):
+    global workout_session
+    if workout_session:
+        active = data.get("active", False)
+        print(f"🎙️ Setting listening mode to: {active}")
+        workout_session.set_listening(active)
+
 
 # ----------------------------------------------------
 # 6. ANALYTICS & AI ROUTES
