@@ -1,38 +1,62 @@
 import React, { useRef, useEffect, useMemo } from "react";
 
-// Enhanced color palette with gradients
+// Enhanced color palette
 const GHOST_COLORS = {
+  // Red for high risk/bad form (Error, high energy/particle emission)
   RED: {
-    primary: "rgba(255, 82, 82, 0.9)",
-    secondary: "rgba(255, 120, 120, 0.6)",
-    glow: "rgba(255, 82, 82, 0.7)",
+    primary: "rgba(255, 69, 58, 1.0)",
+    glow: "rgba(255, 69, 58, 0.9)",
   },
+  // Green for perfect form (Optimal, low energy/particle emission)
   GREEN: {
-    primary: "rgba(52, 211, 153, 0.9)",
-    secondary: "rgba(110, 231, 183, 0.6)",
-    glow: "rgba(52, 211, 153, 0.7)",
+    primary: "rgba(52, 211, 153, 1.0)",
+    glow: "rgba(52, 211, 153, 0.9)",
   },
+  // Yellow for movement/transition
   YELLOW: {
-    primary: "rgba(251, 191, 36, 0.9)",
-    secondary: "rgba(252, 211, 77, 0.6)",
-    glow: "rgba(251, 191, 36, 0.7)",
+    primary: "rgba(251, 191, 36, 1.0)",
+    glow: "rgba(251, 191, 36, 0.9)",
   },
   GRAY: {
-    primary: "rgba(156, 163, 175, 0.8)",
-    secondary: "rgba(209, 213, 219, 0.5)",
-    glow: "rgba(156, 163, 175, 0.6)",
+    primary: "rgba(156, 163, 175, 0.9)",
+    glow: "rgba(156, 163, 175, 0.7)",
   },
 };
+
+// Define the peripheral path for the full-body outline (silhouette)
+// Indices based on MediaPipe Pose landmarks
+const BODY_OUTLINE_PATH = [
+  16, // Right Wrist (R_W)
+  14, // Right Elbow (R_E)
+  12, // Right Shoulder (R_S)
+  11, // Left Shoulder (L_S)
+  13, // Left Elbow (L_E)
+  15, // Left Wrist (L_W)
+  23, // Left Hip (L_H)
+  25, // Left Knee (L_K)
+  27, // Left Ankle (L_A)
+  28, // Right Ankle (R_A) - connect ankles
+  26, // Right Knee (R_K)
+  24, // Right Hip (R_H)
+  12, // Close loop back to Right Shoulder (R_S)
+];
+
+// --- Ring Buffer for Motion Trail Data ---
+const TRAIL_LENGTH = 10; // Number of previous frames to draw as a trail
+const TRAIL_DATA = new Array(TRAIL_LENGTH)
+  .fill(null)
+  .map(() => ({ landmarks: null, color: null }));
 
 const GhostModelOverlay = ({ ghostPoseData }) => {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
   const pulsePhaseRef = useRef(0);
+  const lastLandmarksRef = useRef(null); // Keep track of last frame for trail offset
 
   // Memoize color scheme for drawing
   const colorScheme = useMemo(
     () =>
-      GHOST_COLORS[ghostPoseData?.color?.toUpperCase()] || GUEST_COLORS.GRAY,
+      GHOST_COLORS[ghostPoseData?.color?.toUpperCase()] || GHOST_COLORS.GRAY,
     [ghostPoseData?.color]
   );
 
@@ -42,13 +66,9 @@ const GhostModelOverlay = ({ ghostPoseData }) => {
 
     const container = canvas.parentElement;
 
-    // Use requestAnimationFrame for optimal timing and smoothness.
-    // We remove manual throttling to achieve max FPS (usually 60+)
-
     let containerWidth = container.clientWidth;
     let containerHeight = container.clientHeight;
 
-    // Set dimensions based on current container size
     const setCanvasDimensions = () => {
       containerWidth = container.clientWidth;
       containerHeight = container.clientHeight;
@@ -60,141 +80,133 @@ const GhostModelOverlay = ({ ghostPoseData }) => {
 
     const ctx = canvas.getContext("2d", {
       alpha: true,
-      desynchronized: true, // Low-latency rendering
+      desynchronized: true,
     });
 
-    // IMPROVEMENT: Draw all skeleton segments with a gradient for a volumetric look
-    const drawSkeletonWithGradient = (connections, primaryColor, glowColor) => {
+    /**
+     * Draws a single body outline path.
+     * @param {*} landmarks - Landmark data for the frame.
+     * @param {*} color - Hex color string.
+     * @param {*} alpha - Global alpha transparency for this trail segment.
+     * @param {*} lineWidth - Thickness of the line.
+     * @param {*} blur - Shadow blur for the glow.
+     * @param {*} time - Time for shimmer calculation.
+     */
+    const drawOutlineSegment = (
+      landmarks,
+      color,
+      alpha,
+      lineWidth,
+      blur,
+      time
+    ) => {
       ctx.save();
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
-      ctx.lineWidth = 10;
-      ctx.shadowColor = glowColor;
-      ctx.shadowBlur = 0; // Handled by outer glow layer
 
-      connections.forEach(([startIdx, endIdx]) => {
-        const start = ghostPoseData.landmarks[String(startIdx)];
-        const end = ghostPoseData.landmarks[String(endIdx)];
+      const shimmerMagnitude = 1.5; // Slight shimmer on all segments
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.globalAlpha = alpha;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = blur;
 
-        if (start && end) {
-          // Calculate screen coordinates
-          const startX = start[0] * containerWidth;
-          const startY = start[1] * containerHeight;
-          const endX = end[0] * containerWidth;
-          const endY = end[1] * containerHeight;
+      ctx.beginPath();
+      let firstPoint = true;
 
-          // Create a subtle gradient for volumetric effect
-          const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
-          gradient.addColorStop(0, primaryColor);
-          gradient.addColorStop(0.5, "rgba(255, 255, 255, 0.3)"); // Subtle highlight in the middle
-          gradient.addColorStop(1, primaryColor);
+      BODY_OUTLINE_PATH.forEach((idx, i) => {
+        const landmark = landmarks[String(idx)];
+        if (!landmark) return;
 
-          ctx.strokeStyle = gradient;
+        const x = landmark[0] * containerWidth;
+        const y = landmark[1] * containerHeight;
 
-          ctx.beginPath();
-          ctx.moveTo(startX, startY);
-          ctx.lineTo(endX, endY);
-          ctx.stroke();
+        // Apply Shimmer effect using sine wave based on time and index
+        const offsetX = Math.sin(time * 0.5 + i * 0.5) * shimmerMagnitude;
+        const offsetY = Math.cos(time * 0.5 + i * 0.5) * shimmerMagnitude;
+
+        const shimmeryX = x + offsetX;
+        const shimmeryY = y + offsetY;
+
+        if (firstPoint) {
+          ctx.moveTo(shimmeryX, shimmeryY);
+          firstPoint = false;
+        } else {
+          ctx.lineTo(shimmeryX, shimmeryY);
         }
       });
+
+      if (!firstPoint) {
+        // Close the loop (connect last point to the first shoulder for a closed form)
+        const startLandmark = landmarks[String(BODY_OUTLINE_PATH[3])]; // Left Shoulder
+        if (startLandmark) {
+          ctx.lineTo(
+            startLandmark[0] * containerWidth,
+            startLandmark[1] * containerHeight
+          );
+        }
+      }
+
+      ctx.stroke();
       ctx.restore();
     };
 
-    const drawJoints = (landmarks, pulseIntensity) => {
-      ctx.save();
-      const jointRadius = 13;
-      const landmarkEntries = Object.entries(landmarks);
-
-      // 1. Draw Outer Glow (Single Pass)
-      ctx.fillStyle = colorScheme.glow;
-      ctx.globalAlpha = 0.35 * pulseIntensity;
-      landmarkEntries.forEach(([idx, coords]) => {
-        ctx.beginPath();
-        ctx.arc(
-          coords[0] * containerWidth,
-          coords[1] * containerHeight,
-          jointRadius * 1.8,
-          0,
-          2 * Math.PI
-        );
-        ctx.fill();
-      });
-
-      // 2. Draw Main Joints and Highlights (Single Pass)
-      ctx.globalAlpha = 1;
-      landmarkEntries.forEach(([idx, coords]) => {
-        const x = coords[0] * containerWidth;
-        const y = coords[1] * containerHeight;
-
-        // Main joint body
-        ctx.fillStyle = colorScheme.primary;
-        ctx.beginPath();
-        ctx.arc(x, y, jointRadius, 0, 2 * Math.PI);
-        ctx.fill();
-
-        // Highlight/Reflection (White)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
-        ctx.beginPath();
-        ctx.arc(
-          x - jointRadius * 0.3,
-          y - jointRadius * 0.3,
-          jointRadius * 0.3,
-          0,
-          2 * Math.PI
-        );
-        ctx.fill();
-      });
-      ctx.restore();
-    };
-
+    /**
+     * Handles the trail data and draws all trail segments.
+     */
     const drawGhost = () => {
-      ctx.clearRect(0, 0, containerWidth, containerHeight);
+      // Use low opacity clear to create the trail effect
+      ctx.fillStyle = "rgba(0, 0, 0, 0.1)";
+      ctx.fillRect(0, 0, containerWidth, containerHeight);
 
-      const { landmarks, connections } = ghostPoseData;
+      const { landmarks, color } = ghostPoseData;
 
-      if (
-        !landmarks ||
-        Object.keys(landmarks).length < 2 ||
-        !connections ||
-        connections.length === 0
-      ) {
+      if (!landmarks || Object.keys(landmarks).length < 2) {
         return;
       }
 
+      // --- Update Trail Buffer ---
+      TRAIL_DATA.pop();
+      TRAIL_DATA.unshift({
+        landmarks: landmarks,
+        color: color,
+        timestamp: performance.now(),
+      });
+
       pulsePhaseRef.current += 0.08;
-      const pulseIntensity = Math.sin(pulsePhaseRef.current) * 0.2 + 0.8;
-      const glowBlur = 15 * pulseIntensity;
+      const time = performance.now() / 100;
+      const pulseIntensity = Math.sin(pulsePhaseRef.current) * 0.1 + 0.9;
 
-      // 1. Draw Skeleton Glow Layer
-      ctx.save();
-      ctx.strokeStyle = colorScheme.glow;
-      ctx.lineWidth = 14;
-      ctx.globalAlpha = 0.3 * pulseIntensity;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
+      // --- Draw Trail Segments (Ethereal Echo) ---
+      TRAIL_DATA.forEach((frame, index) => {
+        if (!frame.landmarks) return;
 
-      ctx.beginPath();
-      connections.forEach(([startIdx, endIdx]) => {
-        const start = landmarks[String(startIdx)];
-        const end = landmarks[String(endIdx)];
+        const baseAlpha = 0.05;
+        const decayFactor = (TRAIL_LENGTH - index) / TRAIL_LENGTH;
 
-        if (start && end) {
-          ctx.moveTo(start[0] * containerWidth, start[1] * containerHeight);
-          ctx.lineTo(end[0] * containerWidth, end[1] * containerHeight);
+        // Outer Glow Layer (Diffused and Translucent)
+        drawOutlineSegment(
+          frame.landmarks,
+          GHOST_COLORS[frame.color.toUpperCase()].glow,
+          baseAlpha * decayFactor * 3, // Trail fades out
+          40, // Very wide for heavy bloom
+          20 * decayFactor, // Blur decreases as it fades
+          time
+        );
+
+        // Inner Core Line (Sharper, brighter)
+        if (index === 0) {
+          // Only draw the current frame's inner core
+          drawOutlineSegment(
+            frame.landmarks,
+            GHOST_COLORS[frame.color.toUpperCase()].primary,
+            pulseIntensity, // Core pulses with full brightness
+            10,
+            30,
+            time
+          );
         }
       });
-      ctx.stroke();
-      ctx.restore();
-
-      // 2. Draw Main Skeleton with Gradient (Volumetric look)
-      drawSkeletonWithGradient(
-        connections,
-        colorScheme.primary,
-        colorScheme.glow
-      );
-
-      // 3. Draw Joints and Highlights
-      drawJoints(landmarks, pulseIntensity);
     };
 
     const animate = () => {
@@ -202,12 +214,11 @@ const GhostModelOverlay = ({ ghostPoseData }) => {
       drawGhost();
     };
 
-    animate(); // Start animation loop
+    animate();
 
-    // Handle resize efficiently
     const handleResize = () => {
       setCanvasDimensions();
-      drawGhost(); // Redraw immediately after resize
+      drawGhost();
     };
 
     window.addEventListener("resize", handleResize);
@@ -218,7 +229,7 @@ const GhostModelOverlay = ({ ghostPoseData }) => {
       }
       window.removeEventListener("resize", handleResize);
     };
-  }, [ghostPoseData, colorScheme]); // Dependency array is clean
+  }, [ghostPoseData, colorScheme]);
 
   return (
     <>
@@ -232,10 +243,18 @@ const GhostModelOverlay = ({ ghostPoseData }) => {
           height: "100%",
           zIndex: 15,
           pointerEvents: "none",
+          // *** THE HACKATHON WOW FACTOR: WebGL-like Bloom/Glow ***
+          filter: `
+            blur(0.5px) 
+            drop-shadow(0 0 10px ${colorScheme.glow}) 
+            saturate(150%)
+          `,
+          backgroundColor: "transparent", // Ensure it's transparent for the video feed underneath
+          mixBlendMode: "screen", // Optional: Makes colors additive for an even brighter look
         }}
       />
 
-      {/* Compact legend */}
+      {/* Compact legend (Updated for the new Ethereal theme) */}
       <div
         style={{
           position: "absolute",
@@ -263,13 +282,13 @@ const GhostModelOverlay = ({ ghostPoseData }) => {
             fontWeight: "800",
           }}
         >
-          FORM GUIDE
+          FORM GUIDE (VOLUMETRIC ECHO)
         </div>
 
         {[
-          { color: "GREEN", label: "Perfect", icon: "✓" },
-          { color: "YELLOW", label: "Moving", icon: "→" },
-          { color: "RED", label: "Adjust", icon: "!" },
+          { color: "GREEN", label: "Optimal Flow", icon: "✓" },
+          { color: "YELLOW", label: "Transitioning", icon: "→" },
+          { color: "RED", label: "Energy Disruption", icon: "!" },
         ].map(({ color, label, icon }) => (
           <div
             key={color}
