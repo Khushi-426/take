@@ -17,9 +17,9 @@ class RepCounter:
             'LEFT': deque(maxlen=8)
         }
 
-        # UI STABILITY: Prevents rapid color flickering
+        # --- NEW STABILITY LOGIC: Prevents rapid color flickering ---
         self.color_lock_until = {'RIGHT': 0, 'LEFT': 0}
-        self.color_hold_duration = 1.5 # Seconds to hold a color (e.g. Green)
+        self.color_hold_duration = 1.5 # Seconds to hold a color (e.g. Green) stable
 
         # State confirmation variables - INDEPENDENT
         self.state_hold_time = 0.1 
@@ -143,7 +143,7 @@ class RepCounter:
                 # Select random compliment
                 self.current_compliment[arm] = random.choice(self.compliments)
                 
-                # Lock the success color to prevent flickering
+                # NEW: Lock the success color for stability
                 self.color_lock_until[arm] = current_time + self.color_hold_duration
 
                 # Reset peaks for next rep
@@ -165,7 +165,7 @@ class RepCounter:
             metrics.feedback_color = "GREEN"
             return
 
-        # 2. Check UI Color Lock
+        # 2. Check UI Color Lock: Don't change color if it's currently locked
         if current_time < self.color_lock_until[arm]:
             return
 
@@ -185,7 +185,7 @@ class RepCounter:
         if metrics.stage == ArmStage.LOST.value:
             new_feedback = "Adjust your position"
             metrics.feedback_color = "RED"
-            self.color_lock_until[arm] = current_time + 2.0
+            self.color_lock_until[arm] = current_time + 2.0 # Lock error color slightly longer
         
         # Only update if feedback changed (reduces TTS spam)
         if new_feedback != self.last_feedback[arm]:
