@@ -29,15 +29,16 @@ import Tracker from "./Tracker";
 import Report from "./Report";
 import Tutorial from "./Tutorial";
 import Profile from "./pages/Profile";
-import MedicalRecord from "./pages/MedicalRecord"; // ✅ NEW IMPORT
-import MyPrograms from "./pages/MyPrograms"; // ✅ NEW IMPORT
 import Analytics from "./pages/Analytics";
 import RiskPrediction from "./pages/RiskPrediction";
+
+// ✅ NEW IMPORTS (Fixing the routes)
+import MedicalRecord from "./pages/MedicalRecord";
+import MyPrograms from "./pages/MyPrograms";
 
 import Navbar from "./components/Navbar";
 import * as Pages from "./pages/PlaceholderPages";
 
-// ✅ GOOGLE CLIENT ID
 const GOOGLE_CLIENT_ID =
   "254404106678-ql7lb3kidfsvdjk5a4fcjl7t7kn61aos.apps.googleusercontent.com";
 
@@ -54,7 +55,8 @@ const Layout = ({ children }) => {
   return (
     <>
       {showNavbar && <Navbar />}
-      <div style={{ minHeight: "calc(100vh - 80px)" }}>{children}</div>
+      {/* Removed the inline style minHeight calculation that might cause layout shifts */}
+      <div>{children}</div>
     </>
   );
 };
@@ -126,7 +128,7 @@ function App() {
               {/* --- PROFILE --- */}
               <Route path="/profile/overview" element={<Profile />} />
 
-              {/* ✅ UPDATED ROUTE: Connects to your new MedicalRecord component */}
+              {/* ✅ CONNECTED REAL COMPONENT */}
               <Route path="/profile/medical" element={<MedicalRecord />} />
 
               <Route
@@ -136,13 +138,12 @@ function App() {
 
               {/* --- PROGRAMS --- */}
 
+              {/* ✅ CONNECTED REAL COMPONENT */}
+              <Route path="/programs/my-programs" element={<MyPrograms />} />
+
               <Route
                 path="/programs/custom"
                 element={<Pages.CustomProgram />}
-              />
-              <Route
-                path="/programs/my-programs"
-                element={<MyPrograms />} // ✅ UPDATED
               />
 
               {/* --- ANALYTICS --- */}

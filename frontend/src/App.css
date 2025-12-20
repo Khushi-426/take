@@ -1,10 +1,16 @@
+/* frontend/src/App.css */
+
+/* ✅ RESET ROOT to allow full-width layouts */
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  min-height: 100vh;
 }
 
+/* Keep logo styles */
 .logo {
   height: 6em;
   padding: 1.5em;
@@ -33,6 +39,7 @@
   }
 }
 
+/* Utility classes */
 .card {
   padding: 2em;
 }
@@ -41,44 +48,36 @@
   color: #888;
 }
 
-/* --- NEW STYLES FOR TRACKER COMPONENT --- */
-
-/* Container for the video stream and all overlays */
+/* Tracker Video Container */
 .video-container {
   position: relative;
   width: 100%;
   height: 100%;
 }
 
-/* Video/Image element for the stream */
 .video-feed {
   width: 100%;
   height: 100%;
   display: block;
-  /* Flip the video for a mirror effect, which is what users expect */
   transform: scaleX(-1);
 }
 
-/* Styles for the active feedback box */
+/* Feedback Boxes */
 .active-feedback-box {
   transition: all 0.3s ease;
 }
-
 .active-feedback-box.red {
   border: 3px solid #d32f2f;
   color: #d32f2f;
 }
-
 .active-feedback-box.green {
   border: 3px solid #388e3c;
   color: #388e3c;
 }
-
 .active-feedback-box.yellow {
   border: 3px solid #fbc02d;
   color: #fbc02d;
 }
-
 .active-feedback-box.gray {
   border: 3px solid #616161;
   color: #616161;
