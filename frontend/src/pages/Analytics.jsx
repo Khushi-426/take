@@ -49,16 +49,20 @@ const Analytics = () => {
   }, [user]);
 
   if (loading) return <div style={centerStyle}>Loading Analytics...</div>;
-  if (error) return <div style={{...centerStyle, color: "red"}}>{error}</div>;
+  if (error) return <div style={{ ...centerStyle, color: "red" }}>{error}</div>;
 
   // Safe fallback if history is empty
   const history = data?.history || [];
   const exerciseStats = data?.exercise_stats || [];
 
   return (
-    <div style={{ padding: "40px 5%", background: "#F9F7F3", minHeight: "100vh" }}>
+    <div
+      style={{ padding: "40px 5%", background: "#F9F7F3", minHeight: "100vh" }}
+    >
       <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-        <h1 style={{ fontSize: "2.5rem", color: "#1A3C34", marginBottom: "30px" }}>
+        <h1
+          style={{ fontSize: "2.5rem", color: "#1A3C34", marginBottom: "30px" }}
+        >
           Your Progress
         </h1>
 
@@ -79,14 +83,24 @@ const Analytics = () => {
           <Card
             icon={<Calendar color="#fff" />}
             title="Last Workout"
-            value={history.length > 0 ? history[history.length - 1].date_short : "N/A"}
+            value={
+              history.length > 0
+                ? history[history.length - 1].date_short
+                : "N/A"
+            }
             color="#1565C0"
           />
         </div>
 
         {/* Charts */}
-        <div style={{ marginTop: "40px", display: "grid", gap: "30px", gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))" }}>
-          
+        <div
+          style={{
+            marginTop: "40px",
+            display: "grid",
+            gap: "30px",
+            gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))",
+          }}
+        >
           {/* Line Chart: Accuracy Over Time */}
           <div style={chartCardStyle}>
             <h3 style={chartTitleStyle}>Accuracy Trend</h3>
@@ -97,7 +111,13 @@ const Analytics = () => {
                   <XAxis dataKey="date_short" />
                   <YAxis domain={[0, 100]} />
                   <Tooltip />
-                  <Line type="monotone" dataKey="accuracy" stroke="#2C5D31" strokeWidth={3} dot={{ r: 4 }} />
+                  <Line
+                    type="monotone"
+                    dataKey="accuracy"
+                    stroke="#2C5D31"
+                    strokeWidth={3}
+                    dot={{ r: 4 }}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -113,12 +133,15 @@ const Analytics = () => {
                   <XAxis dataKey="name" />
                   <YAxis />
                   <Tooltip />
-                  <Bar dataKey="total_reps" fill="#1565C0" radius={[4, 4, 0, 0]} />
+                  <Bar
+                    dataKey="total_reps"
+                    fill="#1565C0"
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -126,19 +149,63 @@ const Analytics = () => {
 };
 
 // --- STYLES ---
-const centerStyle = { display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", fontSize: "1.2rem", color: "#666" };
-const gridStyle = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "20px" };
-const chartCardStyle = { background: "#fff", padding: "25px", borderRadius: "20px", boxShadow: "0 5px 20px rgba(0,0,0,0.05)" };
-const chartTitleStyle = { marginBottom: "20px", color: "#444", fontSize: "1.2rem" };
+const centerStyle = {
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  height: "100vh",
+  fontSize: "1.2rem",
+  color: "#666",
+};
+const gridStyle = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+  gap: "20px",
+};
+const chartCardStyle = {
+  background: "#fff",
+  padding: "25px",
+  borderRadius: "20px",
+  boxShadow: "0 5px 20px rgba(0,0,0,0.05)",
+};
+const chartTitleStyle = {
+  marginBottom: "20px",
+  color: "#444",
+  fontSize: "1.2rem",
+};
 
 const Card = ({ icon, title, value, color }) => (
-  <div style={{ background: "white", padding: "25px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "20px", boxShadow: "0 5px 20px rgba(0,0,0,0.05)" }}>
-    <div style={{ width: "50px", height: "50px", borderRadius: "12px", background: color, display: "flex", alignItems: "center", justifyContent: "center" }}>
+  <div
+    style={{
+      background: "white",
+      padding: "25px",
+      borderRadius: "20px",
+      display: "flex",
+      alignItems: "center",
+      gap: "20px",
+      boxShadow: "0 5px 20px rgba(0,0,0,0.05)",
+    }}
+  >
+    <div
+      style={{
+        width: "50px",
+        height: "50px",
+        borderRadius: "12px",
+        background: color,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {icon}
     </div>
     <div>
-      <div style={{ fontSize: "0.9rem", color: "#888", fontWeight: "600" }}>{title}</div>
-      <div style={{ fontSize: "1.8rem", fontWeight: "800", color: "#333" }}>{value}</div>
+      <div style={{ fontSize: "0.9rem", color: "#888", fontWeight: "600" }}>
+        {title}
+      </div>
+      <div style={{ fontSize: "1.8rem", fontWeight: "800", color: "#333" }}>
+        {value}
+      </div>
     </div>
   </div>
 );

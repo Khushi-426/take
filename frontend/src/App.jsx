@@ -18,8 +18,7 @@ import HomeRedirect from "./HomeRedirect";
 
 // --- THERAPIST PAGES ---
 import TherapistPatientMonitoring from "./pages/TherapistPatientMonitoring";
-// ✅ NEW: Import the Assignment Manager (Option A)
-import TherapistAssignmentManager from "./pages/TherapistAssignmentManager"; 
+import TherapistAssignmentManager from "./pages/TherapistAssignmentManager";
 import TherapistNotificationLog from "./pages/TherapistNotificationLog";
 import TherapistAnalytics from "./pages/TherapistAnalytics";
 import SessionReviewScreen from "./components/SessionReviewScreen";
@@ -33,14 +32,17 @@ import Profile from "./pages/Profile";
 import Analytics from "./pages/Analytics";
 import RiskPrediction from "./pages/RiskPrediction";
 
+// REAL IMPORTS
+import MedicalRecord from "./pages/MedicalRecord";
+import MyPrograms from "./pages/MyPrograms";
+
 import Navbar from "./components/Navbar";
 import * as Pages from "./pages/PlaceholderPages";
 
-// ✅ GOOGLE CLIENT ID
 const GOOGLE_CLIENT_ID =
   "254404106678-ql7lb3kidfsvdjk5a4fcjl7t7kn61aos.apps.googleusercontent.com";
 
-// --- ✅ LAYOUT COMPONENT ---
+// --- LAYOUT COMPONENT ---
 const Layout = ({ children }) => {
   const location = useLocation();
 
@@ -53,7 +55,7 @@ const Layout = ({ children }) => {
   return (
     <>
       {showNavbar && <Navbar />}
-      <div style={{ minHeight: "calc(100vh - 80px)" }}>{children}</div>
+      <div>{children}</div>
     </>
   );
 };
@@ -80,13 +82,10 @@ function App() {
                 path="/therapist/monitoring"
                 element={<TherapistPatientMonitoring />}
               />
-              
-              {/* ✅ NEW: Assignment Manager Route */}
               <Route
                 path="/therapist/assignments"
                 element={<TherapistAssignmentManager />}
               />
-
               <Route
                 path="/therapist/notifications"
                 element={<TherapistNotificationLog />}
@@ -123,27 +122,18 @@ function App() {
               {/* --- AUTH --- */}
               <Route path="/auth/login" element={<Pages.Login />} />
               <Route path="/auth/signup" element={<Pages.Signup />} />
-              <Route
-                path="/auth/onboarding"
-                element={<Pages.Onboarding />}
-              />
+              <Route path="/auth/onboarding" element={<Pages.Onboarding />} />
 
               {/* --- PROFILE --- */}
               <Route path="/profile/overview" element={<Profile />} />
-              <Route
-                path="/profile/medical"
-                element={<Pages.MedicalInfo />}
-              />
+              <Route path="/profile/medical" element={<MedicalRecord />} />
               <Route
                 path="/profile/preferences"
                 element={<Pages.Preferences />}
               />
 
               {/* --- PROGRAMS --- */}
-              <Route
-                path="/programs/my-programs"
-                element={<Pages.MyPrograms />}
-              />
+              <Route path="/programs/my-programs" element={<MyPrograms />} />
               <Route
                 path="/programs/custom"
                 element={<Pages.CustomProgram />}
@@ -153,19 +143,7 @@ function App() {
               <Route path="/analytics/accuracy" element={<Analytics />} />
               <Route path="/analytics/risk" element={<RiskPrediction />} />
 
-              {/* --- COMMUNITY --- */}
-              <Route
-                path="/community/achievements"
-                element={<Pages.Achievements />}
-              />
-              <Route
-                path="/community/challenges"
-                element={<Pages.Challenges />}
-              />
-              <Route
-                path="/community/therapist"
-                element={<Pages.TherapistModule />}
-              />
+              {/* --- COMMUNITY ROUTES REMOVED HERE --- */}
 
               {/* --- SUPPORT --- */}
               <Route path="/support/faq" element={<Pages.FAQ />} />

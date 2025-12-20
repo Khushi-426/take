@@ -1,0 +1,378 @@
+/* src/pages/MedicalRecord.css */
+:root {
+  --bg-page: #f9f7f3;
+  --bg-card: #ffffff;
+  --text-main: #1a3c34;
+  --text-muted: #6b7280;
+  --primary: #69b341;
+  --primary-dark: #2c5d31;
+  --border-subtle: #e5e7eb;
+  --radius: 20px;
+  --shadow-soft: 0 4px 20px rgba(26, 60, 52, 0.05);
+}
+
+.medical-container {
+  background-color: var(--bg-page);
+  min-height: 100vh;
+  padding: 2rem;
+  font-family: "Inter", sans-serif;
+  color: var(--text-main);
+}
+
+.medical-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* --- HEADER --- */
+.medical-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+}
+
+.page-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text-main);
+}
+
+.page-subtitle {
+  color: var(--text-muted);
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.mono {
+  font-family: monospace;
+  background: #e5e7eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-main);
+}
+
+.emergency-badge {
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 10px 16px;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #fecaca;
+}
+
+/* --- CARDS GENERAL --- */
+.card {
+  background: var(--bg-card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.card-title h3 {
+  margin: 0;
+  padding: 1.5rem 1.5rem 0 1.5rem;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-main);
+}
+
+/* --- DIAGNOSIS HERO (Light Theme) --- */
+.diagnosis-card {
+  background: #ffffff;
+  border: 2px solid var(--primary);
+  color: var(--text-main);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+}
+
+.diagnosis-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.diagnosis-icon {
+  width: 56px;
+  height: 56px;
+  background: rgba(105, 179, 65, 0.15); /* Light Green Background */
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary); /* Green Icon */
+}
+
+/* Ensure inner SVG uses the correct color */
+.diagnosis-icon svg {
+  stroke: var(--primary);
+}
+
+.diagnosis-info {
+  flex: 1;
+}
+
+.label {
+  display: block;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.diagnosis-card h2 {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: var(--text-main);
+}
+
+.status-pill {
+  background: var(--primary);
+  color: white;
+  padding: 6px 16px;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  box-shadow: 0 4px 10px rgba(105, 179, 65, 0.3);
+}
+
+/* Details Grid */
+.diagnosis-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3rem;
+  margin-bottom: 2rem;
+  padding-bottom: 2rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-muted {
+  color: var(--text-muted);
+}
+
+.detail-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.detail-value {
+  display: block;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+/* Doctor Notes */
+.doctor-notes {
+  background: #f8fafc;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 1.25rem;
+  transition: background-color 0.2s;
+}
+
+/* Added explicit hover state to keep it consistent */
+.doctor-notes:hover {
+  background: #f1f5f9;
+}
+
+.notes-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  color: var(--primary-dark);
+}
+
+.notes-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.notes-content {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-main);
+}
+
+/* --- GRID SYSTEM --- */
+.medical-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .medical-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.grid-left,
+.grid-right {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* --- VITALS --- */
+.vitals-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.vital-card {
+  background: var(--bg-card);
+  padding: 1.25rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.vital-icon {
+  width: 40px;
+  height: 40px;
+  background: #f3f4f6;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.vital-value {
+  display: block;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.1;
+}
+
+.vital-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* --- CHARTS --- */
+.chart-wrapper {
+  padding: 1.5rem;
+}
+
+/* --- MEDICATIONS --- */
+.meds-card {
+  padding-bottom: 1.5rem;
+}
+
+.meds-list {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+
+.med-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.med-item:last-child {
+  border-bottom: none;
+}
+
+.med-item.inactive {
+  opacity: 0.5;
+}
+
+/* UPDATED: Changed Blue to Green Theme */
+.med-icon {
+  width: 36px;
+  height: 36px;
+  background: rgba(105, 179, 65, 0.15); /* Light Green */
+  color: var(--primary); /* Main Green */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.med-info {
+  flex: 1;
+}
+
+.med-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.med-name {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.badge-discontinued {
+  font-size: 0.7rem;
+  background: #e5e7eb;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.med-dosage {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.allergies-box {
+  margin: 0 1.5rem;
+  padding: 1rem;
+  background: #fff1f2;
+  border-radius: 12px;
+  border: 1px dashed #fda4af;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #9f1239;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
