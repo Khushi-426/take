@@ -1,192 +1,238 @@
-# 🏥 PhysioCheck – AI-Powered Rehabilitation Platform
+<!-- 🧠🦾 DARK THEME README FOR PHYSIO CHECK 🦾🧠 -->
 
-Here is a clean, professional README.md formatted specifically for GitHub. It covers the project structure, features, tech stack, and installation instructions based on the code provided.
+<div align="center">
 
-**PhysioCheck** is a full-stack rehabilitation platform designed to bridge the gap between patients and therapists using advanced Computer Vision and AI. It provides real-time posture correction, rep counting, and recovery analytics for patients, while offering therapists a dedicated dashboard to monitor progress and assign rehabilitation protocols.
+<h1 align="center">
+  <br/>
+  🦾 Physio Check
+</h1>
 
----
+<h3>AI-Powered Physical Rehabilitation & Exercise Monitoring Platform</h3>
 
-## 🚀 Features
+<p align="center">
+  <img src="https://img.shields.io/badge/Frontend-React-blue?style=for-the-badge&logo=react" />
+  <img src="https://img.shields.io/badge/Backend-Flask-black?style=for-the-badge&logo=flask" />
+  <img src="https://img.shields.io/badge/Computer%20Vision-OpenCV-green?style=for-the-badge&logo=opencv" />
+  <img src="https://img.shields.io/badge/AI-MediaPipe-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/ML-Scikit--Learn-red?style=for-the-badge" />
+</p>
 
-### 👤 For Patients
+<p align="center">
+  <img src="https://skillicons.dev/icons?i=react,js,html,css,python,flask,opencv,git" />
+</p>
 
-- **Real-Time AI Coaching**  
-  Utilizes Computer Vision (OpenCV + MediaPipe) to track body landmarks, count reps, and detect form errors instantly during exercises.
+> 🚀 **Physio Check** is a next-generation **AI rehabilitation platform** that helps therapists **assign, track, and analyze physical therapy exercises** using **real-time computer vision**.
 
-- **Smart AI Assistant**  
-  Features an integrated "AI Coach" powered by Google Gemini, capable of answering context-aware questions about recovery, form, and specific workout data.
-
-- **Visual Guides**  
-  Includes a "Ghost Model" overlay to help users visualize and mimic correct movements during their session.
-
-- **Progress Tracking**  
-  Offers detailed analytics charts for Range of Motion (ROM), accuracy, and consistency over time.
-
----
-
-### 🧑‍⚕️ For Therapists
-
-- **Patient Dashboard**  
-  A centralized hub to monitor patient adherence, recovery trends, and risk levels (classified as High Risk, Alert, or Normal).
-
-- **Protocol Assignment**  
-  Allows therapists to assign specific exercises (e.g., Squats, Bicep Curls) with custom difficulties to individual patients.
-
-- **Notifications**  
-  Real-time alerts system to track patient milestones or flag lack of activity.
+</div>
 
 ---
 
-## 🛠️ Tech Stack
+## 🌑 Overview
 
-The project utilizes a hybrid architecture comprising a React Frontend, a Node.js/Express Backend for API management, and a Flask/Python Backend for high-performance AI and Computer Vision processing.
+**Physio Check** bridges the gap between **traditional physiotherapy** and **modern AI systems**.
 
-- **Frontend:**  
-  React (Vite), Tailwind CSS, Three.js (@react-three/fiber), Recharts, Socket.io-client
+It enables:
+- 🧑‍⚕️ Therapists to **assign exercises visually** using body-part selection
+- 🧍 Patients to **perform rehab exercises at home**
+- 🤖 AI to **track posture, count reps, validate form, and give feedback** in real time
 
-- **API Backend:**  
-  Node.js, Express, MongoDB (Mongoose), JWT Authentication, Bcrypt
-
-- **AI Engine:**  
-  Python, Flask, OpenCV, MediaPipe, Scikit-learn (Random Forest), Google Gemini API, Flask-SocketIO
-
-- **Database:**  
-  MongoDB Cloud (Atlas)
+The system uses **OpenCV + MediaPipe Pose Estimation** to analyze human motion and provide **objective, data-driven rehabilitation insights**.
 
 ---
 
-## 📂 Project Structure
+## 🧠 Core Capabilities
 
-```text
-PhysioCheck/
-├── frontend/             # React + Vite application
-│   ├── src/              # Components, Pages, 3D Models
-│   └── public/           # Static assets
-├── backend/              # Node.js API Server
-│   ├── models/           # Mongoose Schemas (User, Protocol, Session)
-│   ├── routes/           # Express Routes (Auth, Therapist, etc.)
-│   └── config/           # DB Configuration
-├── app.py                # Main Python Flask App (AI & Streaming)
-├── ai_engine.py          # AI Logic (Recovery Prediction, Gemini Integration)
-├── workout_session.py    # Computer Vision Logic (Rep counting, Angle calc)
-└── ...
-⚙️ Installation & Setup
-Prerequisites
-Node.js & npm
+| Feature | Description |
+|------|-------------|
+| 🦴 Body-Part Based Assignment | Therapist clicks on a body part to assign exercises |
+| 📸 Real-Time Pose Tracking | Live skeletal tracking using MediaPipe |
+| 🔢 Rep Counting | Automatic repetition detection |
+| ⚠️ Posture Validation | Detects incorrect angles & unsafe movements |
+| 📊 Progress Analytics | Recovery trends, accuracy, consistency |
+| 👨‍⚕️ Therapist Dashboard | Patient management & monitoring |
+| 🧍 Patient Dashboard | Exercise guidance & performance feedback |
 
-Python 3.8+
+---
 
-MongoDB Instance
+## 🦾 Supported Exercises (Current)
 
-1️⃣ Database Setup
-Ensure you have a MongoDB connection string ready.
-The application uses a database named physiocheck_db.
+| Exercise | Target Area |
+|--------|-------------|
+| 💪 Bicep Curls | Arms |
+| 🦵 Knee Lifts | Lower Body |
+| 🏋️ Shoulder Press | Shoulders |
+| 🧎 Squats | Legs & Core |
+| 🚣 Standing Row | Back & Arms |
 
-2️⃣ Python AI Engine (Flask)
-This service handles the camera feed and AI processing.
+> ⚡ Architecture allows **easy extension** for new rehab exercises.
 
-bash
-Copy code
-# Navigate to the root directory
-cd Physio_
+---
 
-# Install Python dependencies
-pip install flask flask-cors flask-socketio flask-bcrypt flask-mail pymongo \
-opencv-python mediapipe numpy joblib python-dotenv requests certifi
+## ⚙️ Tech Stack
 
-# Create a .env file in the root directory
-# (See Configuration section below)
+| Layer | Technology |
+|------|-----------|
+| 💻 Frontend | React (Vite) |
+| 🎨 UI / Animations | CSS, SVG, Charts |
+| 🧠 Computer Vision | OpenCV + MediaPipe |
+| 🤖 Machine Learning | Scikit-Learn |
+| 🔥 Backend | Flask + REST APIs |
+| 📡 Real-Time Processing | Python |
+| 🗃️ Data | Session metrics & reports |
 
-# Start the Python Server (Runs on Port 5001)
-python app.py
-Note: This server handles the video feed and socket connections.
+---
 
-3️⃣ Backend API (Node.js)
-This service handles authentication, user management, and data persistence.
+## 🗂️ Project Structure
 
-bash
-Copy code
-# Navigate to the backend directory
-cd backend
+```bash
+Physio_Check/
+├── frontend/
+│   ├── src/
+│   │   ├── components/        # UI components
+│   │   ├── pages/             # Dashboards (Therapist / Patient)
+│   │   ├── assets/            # SVGs, icons
+│   │   └── App.jsx
+│   └── package.json
+│
+├── backend/
+│   ├── app.py                 # Flask entry point
+│   ├── workout_session.py     # Session state manager
+│   ├── pose_processor.py      # MediaPipe pose logic
+│   ├── angle_calculator.py    # Joint angle computation
+│   ├── rep_counter.py         # Repetition logic
+│   ├── calibration.py         # Exercise calibration
+│   ├── models/                # ML models
+│   └── constants.py
+│
+├── README.md
+└── requirements.txt
+```
 
-# Install dependencies
-npm install
+---
 
-# Create a .env file in the backend directory
-# (See Configuration section below)
+````
+## 🚀 Getting Started
 
-# Start the Node Server (Runs on Port 5000)
-npm run dev
-4️⃣ Frontend (React)
-The user interface.
+Follow the steps below to set up **Physio Check** locally for development and testing.
 
-bash
-Copy code
-# Navigate to the frontend directory
-cd frontend
+---
 
-# Install dependencies
-npm install
+### 📦 Prerequisites
 
-# Start the development server (Default Vite port)
-npm run dev
-🔐 Configuration
-You need to configure environment variables for both the Python and Node.js backends.
+Make sure you have the following installed:
 
-Root .env (for Python app.py)
-env
-Copy code
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/
-MAIL_USERNAME=your_email@gmail.com
-MAIL_PASSWORD=your_app_password
-GEMINI_API_KEY=your_google_gemini_api_key
-Backend .env (for Node server.js)
-env
-Copy code
-PORT=5000
-MONGO_URI=mongodb+srv://<username>:<password>@cluster.mongodb.net/
-JWT_SECRET=your_jwt_secret_key
-🏃 Usage
-Start all services
+- **Node.js** (v18 or later)
+- **npm** or **yarn**
+- **Python** (v3.9 – v3.11 recommended)
+- **pip**
+- **Git**
+- A working **webcam** (required for pose tracking)
 
-Python → Port 5001
+---
 
-Node.js → Port 5000
+### 1️⃣ Clone the Repository
 
-React → Default Vite port
+```bash
+git clone https://github.com/<your-username>/Physio_Check.git
+cd Physio_Check
+````
 
-Sign Up / Login
-Create an account via the web interface. Patients and Therapists have different dashboards.
+---
 
-Start Workout
+### 2️⃣ Backend Setup (Flask + Computer Vision)
 
-Navigate to the Dashboard
-
-Select an exercise (e.g., Bicep Curl)
-
-Allow camera access when prompted
-
-Perform the exercise; the AI will count reps and correct form in real time
-
-Therapist View
-Log in as a therapist to assign exercises and view detailed patient recovery data.
-
-🧠 AI Capabilities
-Pose Estimation
-Uses MediaPipe Pose to track 33 body landmarks.
-
-Angle Calculation
-Calculates joint angles (elbow, knee, shoulder) to determine rep completion and form quality.
-
-Recovery Prediction
-Analyzes session history using a Random Forest model (or heuristic fallback) to predict recovery trends and highlight asymmetry between left and right limbs.
-
-Generative Feedback
-The AIEngine class connects to Google's Gemini Flash-Lite model to provide context-aware answers to user queries like:
-
-"Why is my shoulder hurting?"
-
-"How is my form?"
-
+Create and activate a virtual environment:
 
 ```
+cd backend
+python -m venv venv
+```
+
+**Activate the environment**
+
+* **Windows**
+
+```
+venv\Scripts\activate
+```
+
+* **Linux / macOS**
+
+```
+source venv/bin/activate
+```
+
+Install backend dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+Start the Flask server:
+
+```bash
+python app.py
+```
+
+The backend will run at:
+
+```
+http://localhost:5000
+```
+
+---
+
+### 3️⃣ Frontend Setup (React + Vite)
+
+Open a new terminal and navigate to the frontend directory:
+
+```
+cd frontend
+```
+
+Install dependencies:
+
+```
+npm install
+```
+
+Run the development server:
+
+```
+npm run dev
+```
+
+The frontend will be available at:
+
+```
+http://localhost:5173
+```
+
+---
+
+### 4️⃣ Using the Application
+
+1. Open the frontend in your browser.
+2. Select **Therapist Dashboard** or **Patient Dashboard**.
+3. Assign exercises based on body parts.
+4. Allow webcam access for real-time pose tracking.
+5. Perform exercises and receive live feedback.
+
+---
+
+### 🧪 Notes
+
+* Ensure **only one camera-using application** is active at a time.
+* Run backend **before** starting the frontend.
+* MediaPipe performance improves in good lighting conditions.
+
+---
+
+### 🛠 Troubleshooting
+
+* If MediaPipe fails to load, verify your Python version.
+* If webcam doesn’t start, check browser permissions.
+* Reinstall dependencies if module errors occur.
+
+---
+</div> 
