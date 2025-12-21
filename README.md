@@ -111,28 +111,25 @@ Physio_Check/
 ---
 
 ````
-## 🚀 Getting Started
+🚀 Getting Started
 
-Follow the steps below to set up **Physio Check** locally for development and testing.
+Follow the steps below to set up Physio Check locally for development and testing.
 
----
-
-### 📦 Prerequisites
+📦 Prerequisites
 
 Make sure you have the following installed:
 
-- **Node.js** (v18 or later)
-- **npm** or **yarn**
-- **Python** (v3.9 – v3.11 recommended)
-- **pip**
-- **Git**
-- A working **webcam** (required for pose tracking)
+- Node.js(v18 or later)
+- npm or yarn
+- Python (v3.9 – v3.11 recommended)
+- pip
+- Git
+- A working webcam (required for pose tracking)
 
----
-
+````
 ### 1️⃣ Clone the Repository
 
-```bash
+```
 git clone https://github.com/<your-username>/Physio_Check.git
 cd Physio_Check
 ````
