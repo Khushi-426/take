@@ -29,6 +29,9 @@ class RepCounter:
         self.rep_start_time = {'RIGHT': 0, 'LEFT': 0}
         self.last_rep_time = {'RIGHT': 0, 'LEFT': 0}
         
+        # LOGIC FIX: Ensure full Range of Motion (Must go DOWN before counting UP->DOWN)
+        self.ready_to_count = {'RIGHT': False, 'LEFT': False}
+        
         # TRACKING PEAKS FOR ACCURACY
         self.rep_min_angle = {'RIGHT': 180, 'LEFT': 180}
         self.rep_max_angle = {'RIGHT': 0, 'LEFT': 0}
@@ -98,8 +101,12 @@ class RepCounter:
         self._provide_user_centered_feedback(arm, angle, metrics, current_time)
 
     def _determine_target_state(self, angle, contracted, extended, current_stage):
-        """Determines state with buffer for easier rep counting"""
-        buffer = 15 
+        """Determines state with dynamic buffer for easier rep counting"""
+        # Dynamic buffer: 15% of ROM, clamped between 5 and 15 degrees
+        # This prevents 'stuck' states for users with limited mobility
+        rom = abs(extended - contracted)
+        buffer = max(5, min(15, int(rom * 0.15)))
+        
         up_limit = contracted + buffer 
         down_limit = extended - buffer
 
@@ -124,37 +131,40 @@ class RepCounter:
         """Handle state transitions and rep counting"""
         metrics.stage = new_stage
         
-        # DETECT REP COMPLETION (When moving from UP to DOWN)
-        if prev_stage == ArmStage.UP.value and new_stage in [ArmStage.MOVING_DOWN.value, ArmStage.DOWN.value]:
+        # 1. RESET / READY AT BOTTOM (DOWN)
+        # We only mark the arm "ready" to count a rep if it hits the bottom (extension).
+        # This prevents starting halfway or spamming reps at the top.
+        if new_stage == ArmStage.DOWN.value:
+            self.ready_to_count[arm] = True
+            self.rep_start_time[arm] = current_time
+            # Reset accuracy peaks for the upcoming rep
+            self.rep_min_angle[arm], self.rep_max_angle[arm] = 180, 0
             
-            rep_duration = current_time - self.rep_start_time[arm]
+        # 2. DETECT REP COMPLETION (Moving from UP -> DOWN/MOVING_DOWN)
+        elif prev_stage == ArmStage.UP.value and new_stage in [ArmStage.MOVING_DOWN.value, ArmStage.DOWN.value]:
             
-            # Validate rep duration
-            if rep_duration >= self.min_rep_duration:
-                metrics.rep_count += 1
-                metrics.rep_time = rep_duration
+            # CRITICAL CHECK: Did we come from a valid start position?
+            if self.ready_to_count[arm]:
+                rep_duration = current_time - self.rep_start_time[arm]
                 
-                # Calculate accuracy for this completed rep
-                metrics.accuracy = self._calculate_rep_accuracy(arm)
-                
-                self.rep_start_time[arm] = 0 
-                self.last_rep_time[arm] = current_time
-                
-                # Select random compliment
-                self.current_compliment[arm] = random.choice(self.compliments)
-                
-                # NEW: Lock the success color for stability
-                self.color_lock_until[arm] = current_time + self.color_hold_duration
-
-                # Reset peaks for next rep
-                self.rep_min_angle[arm], self.rep_max_angle[arm] = 180, 0
-
-        elif new_stage == ArmStage.DOWN.value:
-            self.rep_start_time[arm] = current_time 
-            
-        elif new_stage == ArmStage.UP.value:
-            if self.rep_start_time[arm] == 0:
-                self.rep_start_time[arm] = current_time
+                # Validate rep duration
+                if rep_duration >= self.min_rep_duration:
+                    metrics.rep_count += 1
+                    metrics.rep_time = rep_duration
+                    
+                    # Calculate accuracy for this completed rep
+                    metrics.accuracy = self._calculate_rep_accuracy(arm)
+                    
+                    self.last_rep_time[arm] = current_time
+                    
+                    # Select random compliment
+                    self.current_compliment[arm] = random.choice(self.compliments)
+                    
+                    # Lock the success color for stability
+                    self.color_lock_until[arm] = current_time + self.color_hold_duration
+                    
+                    # CONSUME THE FLAG: User must go down to DOWN state to earn next rep
+                    self.ready_to_count[arm] = False
 
     def _provide_user_centered_feedback(self, arm, angle, metrics, current_time):
         """Encouraging feedback with stable UI colors"""
@@ -201,3 +211,4 @@ class RepCounter:
         self.rep_start_time[arm] = 0
         self.last_feedback[arm] = ""
         self.color_lock_until[arm] = 0
+        self.ready_to_count[arm] = False
