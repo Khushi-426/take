@@ -1,7 +1,7 @@
 # workout_session.py
 """
 Main workout session manager - OPTIMIZED FOR USER-CENTERED DESIGN & ACCURACY
-With Exercise Verification Logic
+With Exercise Verification (Visual + Audio Warning)
 """
 import cv2
 import mediapipe as mp
@@ -57,7 +57,7 @@ class WorkoutSession:
         # Initialize internal components
         angle_calc = AngleCalculator(SMOOTHING_WINDOW)
         self.pose_processor = PoseProcessor(angle_calc, self.exercise_config)
-        self.verifier = ExerciseVerifier() # Initialize the new Verifier
+        self.verifier = ExerciseVerifier() # Initialize the Verifier
         
         self.calibration_data = CalibrationData()
         self.calibration_manager = CalibrationManager(
@@ -208,7 +208,7 @@ class WorkoutSession:
         """Draws clean overlay, including the new red warning box for wrong exercises"""
         h, w, _ = image.shape
 
-        # --- WRONG EXERCISE WARNING ---
+        # --- WRONG EXERCISE WARNING (VISUAL) ---
         if self.wrong_exercise_detected and results and results.pose_landmarks:
             landmarks = results.pose_landmarks.landmark
             x_coords = [lm.x for lm in landmarks]
@@ -218,14 +218,22 @@ class WorkoutSession:
             x_min, x_max = int(min(x_coords) * w), int(max(x_coords) * w)
             y_min, y_max = int(min(y_coords) * h), int(max(y_coords) * h)
             
+            # Add padding
+            pad = 20
+            x_min, x_max = max(0, x_min - pad), min(w, x_max + pad)
+            y_min, y_max = max(0, y_min - pad), min(h, y_max + pad)
+            
             # Draw Red Box
-            cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 0, 255), 4)
+            cv2.rectangle(image, (x_min, y_min), (x_max, y_max), (0, 0, 255), 5)
             
             # Draw Warning Text background
             cv2.rectangle(image, (x_min, y_min - 40), (x_max, y_min), (0, 0, 255), -1)
             cv2.putText(image, f"WARNING: {self.wrong_exercise_reason.upper()}", 
                         (x_min + 5, y_min - 10), cv2.FONT_HERSHEY_SIMPLEX, 
-                        0.6, (255, 255, 255), 2)
+                        0.7, (255, 255, 255), 2)
+            
+            # DON'T DRAW GHOST IF WRONG EXERCISE DETECTED
+            return
 
         if self.show_ghost:
             ghost_color = self.get_cv_color(self.ghost_pose.color)
@@ -264,15 +272,31 @@ class WorkoutSession:
         if is_wrong:
             self.wrong_exercise_counter += 1
         else:
-            self.wrong_exercise_counter = max(0, self.wrong_exercise_counter - 1)
+            # Decay counter quickly if they correct themselves
+            self.wrong_exercise_counter = max(0, self.wrong_exercise_counter - 2)
         
-        # Trigger warning if mismatch persists for ~0.5 seconds (15 frames)
-        if self.wrong_exercise_counter > 15:
+        # Trigger warning faster: 10 frames (~0.3s)
+        if self.wrong_exercise_counter > 10:
             self.wrong_exercise_detected = True
             self.wrong_exercise_reason = reason
         else:
             self.wrong_exercise_detected = False
 
+        # --- CRITICAL: BLOCK REPS & FORCE SPEECH IF WRONG EXERCISE ---
+        if self.wrong_exercise_detected:
+            warning_msg = f"Stop! {self.wrong_exercise_reason}"
+            
+            # Update Feedback for Speech/TTS
+            # This forces the frontend to read out "Stop! Squat Detected" etc.
+            self.arm_metrics['RIGHT'].feedback = warning_msg
+            self.arm_metrics['LEFT'].feedback = warning_msg
+            self.arm_metrics['RIGHT'].feedback_color = "RED"
+            self.arm_metrics['LEFT'].feedback_color = "RED"
+            
+            # We skip Rep Counting entirely
+            return 
+
+        # --- NORMAL PROCESSING ---
         if (current_time - self.last_ai_check) > self.ai_interval:
             self.last_ai_check = current_time
             self._update_ai_latch(results)

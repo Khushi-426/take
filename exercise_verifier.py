@@ -3,7 +3,6 @@ Exercise Verification Logic - Detects if the user is performing the wrong exerci
 """
 import mediapipe as mp
 import numpy as np
-import math
 
 class ExerciseVerifier:
     def __init__(self):
@@ -24,37 +23,40 @@ class ExerciseVerifier:
         # 1. Extract Key Coordinates & Angles
         features = self._extract_features(landmarks)
         
-        # 2. Define Exclusion Rules (What shouldn't happen in the expected exercise)
-        # expected_exercise_name matches keys in constants.py EXERCISE_PRESETS
-        
+        # 2. Define Exclusion Rules
         ex_name = expected_exercise_name.lower()
 
-        # Rule Set:
-        # Bicep Curl: No overhead reaching, no deep squatting, no single leg lifting
+        # --- RULE SETS ---
+        
+        # Bicep Curl: Should be standing still, arms moving. 
+        # BAD: Overhead reach, deep squatting, single leg lifting.
         if "bicep" in ex_name:
-            if features['is_overhead']: return True, "Overhead Movement Detected"
+            if features['is_overhead']: return True, "Overhead Reach Detected"
             if features['is_squatting']: return True, "Squat Detected"
             if features['is_knee_lift']: return True, "Leg Lift Detected"
 
-        # Shoulder Press: No deep squatting, no single leg lifting. 
-        # (Note: Hands go high, so is_overhead is valid here)
+        # Shoulder Press: Arms go up, but legs should be stable.
+        # BAD: Deep squatting, single leg lifting.
         elif "shoulder" in ex_name or "press" in ex_name:
             if features['is_squatting']: return True, "Squat Detected"
             if features['is_knee_lift']: return True, "Leg Lift Detected"
 
-        # Squat: No overhead reaching (unless Thruster?), no single leg lifting
+        # Squat: Hips go down.
+        # BAD: Overhead reaching (unless Thruster), single leg lifting.
         elif "squat" in ex_name:
-            if features['is_overhead']: return True, "Overhead Movement Detected"
+            if features['is_overhead']: return True, "Overhead Reach Detected"
             if features['is_knee_lift']: return True, "Single Leg Lift Detected"
 
-        # Knee Lift: No deep squatting, no overhead reaching
+        # Knee Lift: One leg goes up.
+        # BAD: Deep squatting, overhead reaching.
         elif "knee" in ex_name or "lift" in ex_name:
             if features['is_squatting']: return True, "Squat Detected"
-            if features['is_overhead']: return True, "Overhead Movement Detected"
+            if features['is_overhead']: return True, "Overhead Reach Detected"
             
-        # Standing Row: No overhead, no squatting, no leg lift
+        # Standing Row: Torso hinge.
+        # BAD: Overhead, squatting, leg lift.
         elif "row" in ex_name:
-            if features['is_overhead']: return True, "Overhead Movement Detected"
+            if features['is_overhead']: return True, "Overhead Reach Detected"
             if features['is_squatting']: return True, "Squat Detected"
             if features['is_knee_lift']: return True, "Leg Lift Detected"
 
@@ -64,7 +66,6 @@ class ExerciseVerifier:
         """Analyzes geometric features of the pose"""
         pl = self.mp_pose
         
-        # Helper to get coords
         def get_pos(idx):
             lm = landmarks[idx]
             return np.array([lm.x, lm.y])
